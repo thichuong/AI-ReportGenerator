@@ -61,9 +61,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Environment variables with defaults
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DATABASE_URL="sqlite:///./data/ai_report.db" \
     HOST="0.0.0.0" \
     PORT="8888"
+# DATABASE_URL will be injected by Railway or read from .env file
+# Default fallback is handled in app/db/session.py
 
 # Entrypoint - show quick info and start uvicorn
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

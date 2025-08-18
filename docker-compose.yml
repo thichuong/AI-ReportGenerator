@@ -3,14 +3,12 @@ services:
     build: .
     ports:
       - "8888:8888"
-    env_file:
-      - .env
     environment:
       - DEBUG=False
       - HOST=0.0.0.0
       - PORT=8888
-      # DATABASE_URL will be read from .env file or Railway environment variables
-      # If not set, it will default to sqlite:///./ai_report.db as defined in app/db/session.py
+      # DATABASE_URL and other secrets will be injected by Railway from environment variables
+      # For local development, you can create a .env file
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

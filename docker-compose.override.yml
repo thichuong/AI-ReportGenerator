@@ -1,0 +1,8 @@
+# docker-compose.override.yml
+# This file is automatically used by docker-compose for local development
+# It will be ignored on Railway server
+
+services:
+  ai-report-generator:
+    env_file:
+      - .env
