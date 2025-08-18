@@ -36,12 +36,13 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy Python dependencies from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
 # Copy application code from builder
 COPY --from=builder /app .
+
+# Install Python dependencies in runtime stage to ensure entrypoints are available
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Create data directory for database
 RUN mkdir -p /app/data
@@ -53,8 +54,8 @@ USER appuser
 # Expose port
 EXPOSE 8888
 
-# Health check for API endpoint - wait longer for startup
-HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+# Health check for API endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8888/health || exit 1
 
 # Environment variables with defaults
@@ -64,5 +65,8 @@ ENV PYTHONUNBUFFERED=1 \
     HOST="0.0.0.0" \
     PORT="8888"
 
-# Command to run the application
-CMD ["python", "run.py"]
+# Entrypoint - show quick info and start uvicorn
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8888"]
