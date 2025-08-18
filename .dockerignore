@@ -1,0 +1,79 @@
+# Ignore Git files
+.git
+.gitignore
+.gitattributes
+
+# Ignore documentation
+README.md
+*.md
+docs/
+
+# Ignore development files
+.env
+.env.local
+.env.example
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+.nyc_output
+.cache
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore temporary files
+tmp/
+temp/
+.tmp/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Ignore Docker files (except the ones we want)
+docker-compose.override.yml
+Dockerfile.old
+
+# Ignore test files and scripts
+tests/
+test_*
+*_test.py
+scripts/
+
+# Ignore database files (will be mounted as volume)
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore large data files
+data/
+*.csv
+*.json.bak

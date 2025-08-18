@@ -53,14 +53,46 @@ Hoặc sử dụng uvicorn trực tiếp:
 uvicorn main:app --reload
 ```
 
-### 4. Chạy với Docker
-```bash
-# Build và run với Docker
-docker build -t ai-report-api .
-docker run -p 8000:8000 ai-report-api
+### 4. Docker Deployment (Khuyến nghị)
 
-# Hoặc sử dụng Docker Compose
-docker-compose up --build
+#### Quick Deploy
+```bash
+# Chạy script tự động deploy
+./deploy.sh
+```
+
+#### Manual Docker Deploy
+```bash
+# Tạo thư mục cần thiết
+mkdir -p data logs
+
+# Build và chạy với Docker Compose
+docker-compose up -d --build
+
+# Kiểm tra logs
+docker-compose logs -f
+
+# Dừng services
+docker-compose down
+```
+
+#### Railway Deployment
+```bash
+# Cài đặt Railway CLI
+npm install -g @railway/cli
+
+# Login và deploy
+railway login
+railway up
+```
+
+### 5. Development Mode
+```bash
+# Chạy development server
+python run.py
+
+# Hoặc với uvicorn
+uvicorn main:app --reload
 ```
 
 ## API Endpoints
@@ -78,11 +110,37 @@ docker-compose up --build
 - `GET /api/v1/progress/{session_id}` - Theo dõi tiến độ tạo báo cáo
 - `GET /api/v1/check-api-key` - Kiểm tra API key (debug)
 
-### System
+### System & Monitoring
 - `GET /` - Root endpoint
-- `GET /health` - Health check
+- `GET /health` - Health check endpoint
 - `GET /docs` - Swagger documentation
 - `GET /redoc` - ReDoc documentation
+
+## 🔍 Monitoring & Health Checks
+
+### Local Development
+```bash
+# Health check
+curl http://localhost:8888/health
+
+# API documentation
+curl http://localhost:8888/docs
+```
+
+### Docker Deployment
+```bash
+# Container status
+docker-compose ps
+
+# Health check
+curl http://localhost:8888/health
+
+# View logs
+docker-compose logs -f ai-report-generator
+
+# Container stats
+docker stats
+```
 
 ## Tính năng
 

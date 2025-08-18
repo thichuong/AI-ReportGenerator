@@ -1,11 +1,16 @@
-# Multi-stage build optimized Dockerfile for AI-ReportGenerator
+# Optimized multi-stage Dockerfile for AI-ReportGenerator
+# Based on web-server-report architecture
 FROM python:3.11-slim-bookworm as builder
 
-# Install build dependencies
+# Avoid prompts from apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies for SSL/TLS and compilation
 RUN apt-get update && apt-get install -y \
     pkg-config \
     build-essential \
     gcc \
+    libssl-dev \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -15,32 +20,41 @@ RUN update-ca-certificates
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Copy requirements first for better Docker layer caching
 COPY requirements.txt ./
 
-# Install Python dependencies in builder stage
+# Create dummy main.py for dependency installation
+RUN echo "print('Building dependencies...')" > main.py
+
+# Install Python dependencies only (this layer will be cached)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# Remove dummy file
+RUN rm main.py
 
 # Copy source code
 COPY . .
 
-# Runtime stage - minimal slim image
-FROM python:3.11-slim-bookworm
+# Runtime stage - minimal Ubuntu for better compatibility
+FROM ubuntu:22.04
 
 # Install minimal runtime dependencies
 RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-distutils \
     ca-certificates \
+    libssl3 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy Python dependencies from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# Copy Python installation from builder
+COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code from builder
+# Copy application code and assets
 COPY --from=builder /app .
 
 # Create data directory for database
@@ -50,7 +64,7 @@ RUN mkdir -p /app/data
 RUN useradd -r -u 1001 -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
+# Expose port 8888
 EXPOSE 8888
 
 # Health check for API endpoint
@@ -58,11 +72,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8888/health || exit 1
 
 # Environment variables with defaults
-ENV PYTHONUNBUFFERED=1 \
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DATABASE_URL="sqlite:///./data/ai_report.db" \
     HOST="0.0.0.0" \
-    PORT="8888"
+    PORT="8888" \
+    DEBUG="False"
 
 # Command to run the application
-CMD ["python", "run.py"]
+CMD ["python3", "run.py"]
