@@ -29,7 +29,7 @@ async def generate_auto_report(
     background_tasks: BackgroundTasks
 ):
     """
-    Tạo báo cáo tự động với AI workflow V2
+    Tạo báo cáo tự động với AI workflow
     """
     try:
         api_key = os.getenv('GEMINI_API_KEY')
@@ -43,16 +43,16 @@ async def generate_auto_report(
         # Tạo session_id mới cho tracking
         session_id = str(uuid.uuid4())
         
-        # Import và chạy workflow V2 trong background task
-        from app.services.report_workflow_v2 import generate_auto_research_report_langgraph_v2
+        # Import và chạy workflow trong background task
+        from app.services.report_workflow import generate_auto_research_report_langgraph
         from app.services.progress_tracker import progress_tracker
         
         def run_workflow_background():
-            """Chạy workflow V2 trong background với error handling"""
+            """Chạy workflow trong background với error handling"""
             try:
-                result = generate_auto_research_report_langgraph_v2(api_key, session_id=session_id)
-                #print(f"Workflow V2 completed: {result}")
-                print(f"Workflow V2 completed successfully for session {session_id}")
+                result = generate_auto_research_report_langgraph(api_key, session_id=session_id)
+                #print(f"Workflow completed: {result}")
+                print(f"Workflow completed successfully for session {session_id}")
             except Exception as e:
                 print(f"Workflow error: {e}")
                 progress_tracker.error_progress(session_id, f"Lỗi workflow: {e}")
@@ -89,3 +89,45 @@ async def get_progress(session_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/manual-generate")
+async def generate_manual_report():
+    """
+    Tạo báo cáo thủ công ngay lập tức (không dùng background task)
+    """
+    try:
+        from app.services.auto_report_scheduler import create_manual_report
+        
+        result = create_manual_report()
+        
+        if result['success']:
+            return JSONResponse({
+                'success': True,
+                'message': result['message'],
+                'report_id': result['report_id'],
+                'duration': result['duration']
+            })
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail=result['error']
+            )
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Lỗi khi tạo báo cáo thủ công: {e}')
+
+
+@router.get("/scheduler/status")
+async def scheduler_status():
+    """
+    Kiểm tra trạng thái auto report scheduler
+    """
+    import os
+    
+    return JSONResponse({
+        'scheduler_enabled': os.getenv('ENABLE_AUTO_REPORT_SCHEDULER', 'false').lower() == 'true',
+        'api_key_configured': bool(os.getenv('GEMINI_API_KEY')),
+        'interval_hours': int(os.getenv('AUTO_REPORT_INTERVAL_HOURS', '3')),
+        'max_attempts': int(os.getenv('MAX_REPORT_ATTEMPTS', '3'))
+    })

@@ -204,7 +204,7 @@ def check_report_validation(report_text):
 def get_realtime_dashboard_data():
     """Lấy dữ liệu thời gian thực từ các services cơ bản"""
     try:
-        # Import trực tiếp các service cần thiết (không có RSI)
+        # Import trực tiếp các service cần thiết (bao gồm cả RSI)
         from ... import services
         import concurrent.futures
         
@@ -220,45 +220,51 @@ def get_realtime_dashboard_data():
         def call_fng_data():
             return services.alternative_me.get_fng_index()
         
+        def call_btc_rsi():
+            return services.taapi.get_btc_rsi()
+        
+        
         # Gọi tất cả API song song với timeout
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             future_global = executor.submit(call_global_data)
             future_btc = executor.submit(call_btc_data)
             future_fng = executor.submit(call_fng_data)
+            future_rsi = executor.submit(call_btc_rsi)
             
             # Chờ tất cả hoàn thành với timeout 10 giây
             try:
                 global_data, global_error, global_status = future_global.result(timeout=10)
                 btc_data, btc_error, btc_status = future_btc.result(timeout=10)
                 fng_data, fng_error, fng_status = future_fng.result(timeout=10)
+                rsi_data, rsi_error, rsi_status = future_rsi.result(timeout=10)
             except concurrent.futures.TimeoutError:
                 print("Timeout when getting real-time data")
                 return None
 
-        # Xử lý lỗi và tạo fallback data
+        # Xử lý lỗi: không sử dụng dữ liệu fallback ở cấp này.
+        # Ghi log lỗi, trả về dữ liệu sẵn có; caller sẽ quyết định hành động khi thiếu trường dữ liệu.
         if fng_error:
-            fng_data = {"fng_value": 50, "fng_value_classification": "Neutral"}
+            print("Warning: FNG data error:", fng_error)
 
-        # Kiểm tra dữ liệu quan trọng
+        if rsi_error:
+            print("Warning: RSI data error:", rsi_error)
+
         if global_error and btc_error:
-            print("Both global and BTC data failed, using fallback")
-            return {
-                "market_cap": None,
-                "volume_24h": None,
-                "btc_price_usd": None,
-                "btc_change_24h": None,
-                "fng_value": 50,
-                "fng_classification": "Neutral",
-                "data_source": "fallback"
-            }
+            print("Error: Both global and BTC data failed; returning available data (no fallback)")
 
         # Kết hợp tất cả dữ liệu thành một object duy nhất
-        combined_data = {
-            **(global_data or {}),
-            **(btc_data or {}),
-            **(fng_data or {}),
-            "data_source": "real_time"
-        }
+        # Chỉ merge những service trả về thành công (không có error)
+        combined_data = {}
+        if not global_error and global_data:
+            combined_data.update(global_data)
+        if not btc_error and btc_data:
+            combined_data.update(btc_data)
+        if not fng_error and fng_data:
+            combined_data.update(fng_data)
+        if not rsi_error and rsi_data:
+            combined_data.update(rsi_data)
+
+        combined_data["data_source"] = "real_time"
         
         print(f"Successfully got real-time data: {list(combined_data.keys())}")
         return combined_data
