@@ -53,8 +53,8 @@ USER appuser
 # Expose port
 EXPOSE 8888
 
-# Health check for API endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# Health check for API endpoint - wait longer for startup
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8888/health || exit 1
 
 # Environment variables with defaults

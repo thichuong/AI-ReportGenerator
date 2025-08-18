@@ -45,4 +45,23 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    try:
+        # Kiểm tra database nếu cần
+        from app.db.session import engine
+        from sqlalchemy import text
+        
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "port": 8888,
+            "service": "AI Report Generator"
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "database": "disconnected"
+        }
