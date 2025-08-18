@@ -71,26 +71,15 @@ print_success "Services started successfully"
 
 # Wait for health check
 print_status "Waiting for health check..."
-sleep 15
+sleep 10
 
-# Check if service is healthy with more detail
-print_status "Checking service health..."
-for i in {1..6}; do
-    if curl -f http://localhost:8888/health > /dev/null 2>&1; then
-        print_success "Health check passed - AI-ReportGenerator is running!"
-        break
-    else
-        print_warning "Health check attempt $i/6 failed. Waiting 10s..."
-        if [ $i -eq 6 ]; then
-            print_error "Health check failed after 6 attempts"
-            print_status "Container logs:"
-            $DOCKER_COMPOSE_CMD logs --tail=50 ai-report-generator
-            print_status "You can run ./health-debug.sh for more detailed diagnostics"
-        else
-            sleep 10
-        fi
-    fi
-done
+# Check if service is healthy
+if curl -f http://localhost:8888/health > /dev/null 2>&1; then
+    print_success "Health check passed - AI-ReportGenerator is running!"
+else
+    print_warning "Health check failed or endpoint not ready yet"
+    print_status "Check logs with: $DOCKER_COMPOSE_CMD logs -f"
+fi
 
 echo ""
 echo "🎉 Deployment complete!"

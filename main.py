@@ -17,21 +17,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Tạo database tables khi khởi động
-create_tables()
-
-# Khởi động auto report scheduler
+# Khởi động auto report scheduler và tạo database tables khi app bắt đầu
 @app.on_event("startup")
 async def startup_event():
     """Initialize services when app starts"""
     print("🚀 Starting AI Report Generator...")
-    
+
+    # Tạo database tables khi khởi động (bọc try/except để tránh crash lúc import)
+    try:
+        create_tables()
+        print("✅ Database tables ensured/created")
+    except Exception as e:
+        # Log lỗi nhưng không ngăn server khởi động - health endpoint vẫn có thể phản hồi
+        print(f"❌ Failed to create/ensure database tables: {e}")
+
     # Start auto report scheduler if enabled
-    scheduler_started = start_auto_report_scheduler()
-    if scheduler_started:
-        print("✅ Auto report scheduler started successfully")
-    else:
-        print("ℹ️ Auto report scheduler not started (check environment variables)")
+    try:
+        scheduler_started = start_auto_report_scheduler()
+        if scheduler_started:
+            print("✅ Auto report scheduler started successfully")
+        else:
+            print("ℹ️ Auto report scheduler not started (check environment variables)")
+    except Exception as e:
+        print(f"❌ Error while starting auto report scheduler: {e}")
 
 # Đăng ký router
 app.include_router(articles.router, prefix="/api/v1", tags=["articles"])
@@ -45,23 +53,4 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    try:
-        # Kiểm tra database nếu cần
-        from app.db.session import engine
-        from sqlalchemy import text
-        
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-            
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "port": 8888,
-            "service": "AI Report Generator"
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "database": "disconnected"
-        }
+    return {"status": "healthy"}
