@@ -32,12 +32,16 @@ FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy application code from builder
 COPY --from=builder /app .
+
+# Copy and set permissions for entrypoint script
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/
 
 # Install Python dependencies in runtime stage to ensure entrypoints are available
 COPY requirements.txt ./
@@ -66,7 +70,6 @@ ENV PYTHONUNBUFFERED=1 \
 # DATABASE_URL will be injected by Railway or read from .env file
 # Default fallback is handled in app/db/session.py
 
-# Entrypoint - show quick info and start uvicorn
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# Use the entrypoint script to configure and start the app
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8888"]
+CMD ["python", "run.py"]
