@@ -1,15 +1,16 @@
-version: '3.8'
-
 services:
   ai-report-generator:
     build: .
     ports:
       - "8888:8888"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=sqlite:///./data/ai_report.db
       - DEBUG=False
       - HOST=0.0.0.0
       - PORT=8888
+      # DATABASE_URL will be read from .env file or Railway environment variables
+      # If not set, it will default to sqlite:///./ai_report.db as defined in app/db/session.py
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
