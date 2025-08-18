@@ -1,11 +1,11 @@
-# AI Report Generator
+# AI Report Generator FastAPI
 
 ## Mô tả
-Ứng dụng AI để tạo báo cáo đầu tư tự động với FastAPI backend.
+Ứng dụng FastAPI để tạo báo cáo đầu tư sử dụng AI.
 
 ## Cấu trúc dự án
 ```
-AI-ReportGenerator/
+python-app/
 ├── app/
 │   ├── __init__.py
 │   ├── db/
@@ -22,12 +22,10 @@ AI-ReportGenerator/
 │   └── services/
 │       ├── __init__.py
 │       └── article_service.py # Chứa logic nghiệp vụ
-├── create_report/            # Module tạo báo cáo AI
 ├── main.py                   # FastAPI application instance
 ├── run.py                    # Điểm khởi chạy ứng dụng
 ├── requirements.txt          # Dependencies
 ├── Dockerfile                # File cấu hình Docker
-├── docker-compose.yml        # Docker Compose configuration
 └── .env.example              # File cấu hình môi trường mẫu
 ```
 
@@ -55,17 +53,15 @@ uvicorn main:app --reload
 
 ### 4. Chạy với Docker
 ```bash
-# Build và run với Docker
 docker build -t ai-report-api .
 docker run -p 8000:8000 ai-report-api
-
-# Hoặc sử dụng Docker Compose
-docker-compose up --build
 ```
 
 ## API Endpoints
 
-### Articles
+- `GET /` - Root endpoint
+- `GET /health` - Health check
+- `GET /docs` - Swagger documentation
 - `POST /api/v1/articles/` - Tạo bài viết mới
 - `GET /api/v1/articles/` - Lấy danh sách bài viết
 - `GET /api/v1/articles/{id}` - Lấy chi tiết bài viết
@@ -73,32 +69,16 @@ docker-compose up --build
 - `DELETE /api/v1/articles/{id}` - Xóa bài viết
 - `POST /api/v1/articles/{id}/publish` - Xuất bản bài viết
 
-### AI Reports
-- `POST /api/v1/generate-auto-report` - Tạo báo cáo tự động bằng AI
-- `GET /api/v1/progress/{session_id}` - Theo dõi tiến độ tạo báo cáo
-- `GET /api/v1/check-api-key` - Kiểm tra API key (debug)
-
-### System
-- `GET /` - Root endpoint
-- `GET /health` - Health check
-- `GET /docs` - Swagger documentation
-- `GET /redoc` - ReDoc documentation
-
 ## Tính năng
 
-- ✅ FastAPI REST API
 - ✅ CRUD operations cho articles
-- ✅ AI-powered auto report generation với Gemini AI
-- ✅ LangGraph workflow cho tự động hóa
-- ✅ Progress tracking cho long-running tasks
-- ✅ Background task processing
 - ✅ Pydantic schemas cho validation
 - ✅ SQLAlchemy models
 - ✅ Service layer pattern
 - ✅ Database session management
-- ✅ Docker & Docker Compose support
+- ✅ Docker support
 - ✅ Environment configuration
-- ✅ API documentation với Swagger/ReDoc
+- ✅ API documentation với Swagger
 
 ## Công nghệ sử dụng
 
@@ -107,14 +87,3 @@ docker-compose up --build
 - **Pydantic** - Data validation
 - **Uvicorn** - ASGI server
 - **SQLite** - Database (có thể thay đổi)
-- **Google Gemini AI** - AI content generation
-- **LangChain & LangGraph** - AI workflow orchestration
-- **Beautiful Soup** - HTML parsing
-- **Requests** - HTTP client
-
-## Truy cập API Documentation
-
-Sau khi chạy ứng dụng, bạn có thể truy cập:
-- **Swagger UI:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
- 

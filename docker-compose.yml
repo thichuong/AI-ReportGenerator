@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/ai_report.db
+      - DEBUG=True
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
