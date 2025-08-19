@@ -43,7 +43,7 @@ def create_html_node(state: ReportState) -> ReportState:
     ]
     
     simple_config = types.GenerateContentConfig(
-        temperature=0.3,
+        temperature=0.1,
         candidate_count=1,
     )
     
@@ -127,7 +127,7 @@ def create_javascript_node(state: ReportState) -> ReportState:
     ]
     
     simple_config = types.GenerateContentConfig(
-        temperature=0.3,
+        temperature=0.1,
         candidate_count=1,
     )
     
@@ -207,7 +207,7 @@ def create_css_node(state: ReportState) -> ReportState:
     ]
     
     simple_config = types.GenerateContentConfig(
-        temperature=0.3,
+        temperature=0.1,
         candidate_count=1,
     )
     

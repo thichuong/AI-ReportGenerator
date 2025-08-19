@@ -30,30 +30,29 @@ def load_prompt_envs():
         try:
             # Read the .env file manually
             with open(env_file, 'r', encoding='utf-8') as f:
-                content = f.read()
+                content = f.read().strip()
                 
-            # Parse simple KEY="value" format
-            # Handle multi-line values enclosed in quotes
-            # Try both single-line and multi-line patterns
-            matches = []
+            # More robust parsing for KEY = "value" format with multiline content
+            # Find the first = sign to separate key and value
+            if '=' not in content:
+                print(f"⚠️ No assignment found in {os.path.basename(env_file)}")
+                continue
+                
+            first_eq = content.find('=')
+            key_part = content[:first_eq].strip()
+            value_part = content[first_eq + 1:].strip()
             
-            # First try to match the entire content as one assignment (more flexible)
-            full_match = re.match(r'^([^=]+)=(["\'])(.*)\2', content.strip(), re.DOTALL)
-            if full_match:
-                matches = [full_match.groups()]
+            # Remove surrounding quotes if present
+            if ((value_part.startswith('"') and value_part.endswith('"')) or 
+                (value_part.startswith("'") and value_part.endswith("'"))):
+                value_part = value_part[1:-1]
+                
+            if key_part and value_part:
+                os.environ[key_part] = value_part
+                loaded_prompts[key_part] = len(value_part)
+                print(f"✅ Loaded prompt '{key_part}' ({len(value_part)} chars) from {os.path.basename(env_file)}")
             else:
-                # Fall back to line-by-line parsing
-                matches = re.findall(r'^([^=]+)=(["\'])(.*?)\2$', content, re.MULTILINE | re.DOTALL)
-            
-            for match in matches:
-                key = match[0].strip()
-                value = match[2]
-                
-                if key and value:
-                    os.environ[key] = value
-                    loaded_prompts[key] = len(value)  # Store length for logging
-                    
-            print(f"✅ Loaded {len(matches)} prompt(s) from {os.path.basename(env_file)}")
+                print(f"⚠️ Invalid format in {os.path.basename(env_file)}: empty key or value")
             
         except Exception as e:
             print(f"❌ Error loading {env_file}: {e}")
