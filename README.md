@@ -175,4 +175,7 @@ docker stats
 Sau khi chạy ứng dụng, bạn có thể truy cập:
 - **Swagger UI:** `http://localhost:8000/docs`
 - **ReDoc:** `http://localhost:8000/redoc`
- 
+
+## License
+
+Dự án này được phát hành dưới **Apache License 2.0**. Xem file [LICENSE](LICENSE) để biết chi tiết.
