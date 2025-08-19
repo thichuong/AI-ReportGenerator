@@ -67,7 +67,7 @@ def validate_report_node(state: ReportState) -> ReportState:
                     # Kiểm tra các elements cơ bản
                     has_btc = any(keyword in content_lower for keyword in ['bitcoin', 'btc'])
                     has_analysis = any(keyword in content_lower for keyword in ['phân tích', 'analysis', 'thị trường', 'market'])
-                    has_numbers = re.search(r'\d+\.?\d*\s*%|\$\d+', research_content)
+                    has_numbers = bool(re.search(r'\d+\.?\d*\s*%|\$\d+', research_content))
                     has_fng = any(keyword in content_lower for keyword in ['fear', 'greed', 'sợ hãi', 'tham lam'])
                     
                     # Kiểm tra có validation table không

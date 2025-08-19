@@ -3,7 +3,7 @@ Node chuẩn bị dữ liệu và khởi tạo Gemini client
 """
 import os
 from google import genai
-from .base import ReportState, read_prompt_file, replace_date_placeholders, get_realtime_dashboard_data
+from .base import ReportState, read_prompt_file, get_prompt_from_env, replace_date_placeholders, get_realtime_dashboard_data
 from ...services.progress_tracker import progress_tracker
 
 
@@ -32,10 +32,10 @@ def prepare_data_node(state: ReportState) -> ReportState:
         os.path.join(current_dir, '..', '..', '..', 'create_report', 'prompt_create_report.md')
     )
     
-    # Đọc prompt combined research + validation và thay thế ngày tháng
-    research_analysis_prompt = read_prompt_file(state["research_analysis_prompt_path"])
+    # Đọc prompt combined research + validation từ biến môi trường và thay thế ngày tháng
+    research_analysis_prompt = get_prompt_from_env("prompt_combined_research_validation")
     if research_analysis_prompt is None:
-        error_msg = "Không thể đọc prompt combined research + validation"
+        error_msg = "Không thể đọc prompt combined research + validation từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
@@ -55,26 +55,26 @@ def prepare_data_node(state: ReportState) -> ReportState:
         progress_tracker.error_progress(session_id, error_msg)
         return state
     
-    # Đọc prompt data validation 
-    data_validation_prompt = read_prompt_file(state["data_validation_prompt_path"])
+    # Đọc prompt data validation từ biến môi trường
+    data_validation_prompt = get_prompt_from_env("prompt_data_validation")
     if data_validation_prompt is None:
-        error_msg = "Không thể đọc prompt data validation"
+        error_msg = "Không thể đọc prompt data validation từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
         return state
-    
+
     state["data_validation_prompt"] = data_validation_prompt
     
-    # Đọc prompt tạo giao diện
-    create_report_prompt = read_prompt_file(state["create_report_prompt_path"])
+    # Đọc prompt tạo giao diện từ biến môi trường
+    create_report_prompt = get_prompt_from_env("prompt_create_report")
     if create_report_prompt is None:
-        error_msg = "Không thể đọc prompt tạo giao diện"
+        error_msg = "Không thể đọc prompt tạo giao diện từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
         return state
-    
+
     state["create_report_prompt"] = create_report_prompt
     state["current_attempt"] = 0
     

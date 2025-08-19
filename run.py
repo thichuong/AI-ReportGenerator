@@ -3,6 +3,10 @@ File để chạy ứng dụng FastAPI với Railway support
 """
 import uvicorn
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 if __name__ == "__main__":
     # Railway configuration - dynamic port and host

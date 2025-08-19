@@ -3,7 +3,7 @@
 import time
 from typing import Dict, Any
 from google.genai import types
-from .base import ReportState, read_prompt_file
+from .base import ReportState, read_prompt_file, get_prompt_from_env
 from ...services.progress_tracker import progress_tracker
 
 
@@ -98,9 +98,12 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
     if not content or len(content.strip()) == 0:
         return None
     
-    # Tạo prompt dịch cho HTML content: đọc từ file prompt để dễ bảo trì
+    # Tạo prompt dịch cho HTML content: đọc từ biến môi trường để dễ bảo trì
     if content_type == "html":
-        prompt_template = read_prompt_file('prompt_translate_html.md')
+        prompt_template = get_prompt_from_env('prompt_translate_html')
+        if prompt_template is None:
+            print("ERROR: Không thể đọc prompt_translate_html từ biến môi trường")
+            return None
         prompt = prompt_template.replace('{content}', content)
     else:  # JavaScript translation no longer supported
         print(f"WARNING: JavaScript translation is no longer supported. Content type: {content_type}")

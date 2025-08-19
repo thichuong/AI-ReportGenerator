@@ -4,7 +4,7 @@ Node tạo giao diện theo từng thành phần riêng biệt (HTML, JS, CSS)
 import time
 import re
 from google.genai import types
-from .base import ReportState, read_prompt_file
+from .base import ReportState, read_prompt_file, get_prompt_from_env
 from ...services.progress_tracker import progress_tracker
 
 
@@ -19,10 +19,10 @@ def create_html_node(state: ReportState) -> ReportState:
     # Bước tạo HTML sau khi đã có nội dung báo cáo markdown
     progress_tracker.update_step(session_id, 5, f"Tạo HTML (lần {state[html_attempt_key]})", "Tạo cấu trúc HTML từ nội dung báo cáo")
     
-    # Đọc prompt tạo HTML
-    html_prompt = read_prompt_file('prompt_create_html.md')
+    # Đọc prompt tạo HTML từ biến môi trường
+    html_prompt = get_prompt_from_env('prompt_create_html')
     if not html_prompt:
-        error_msg = "Không thể đọc prompt tạo HTML"
+        error_msg = "Không thể đọc prompt tạo HTML từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
@@ -104,10 +104,10 @@ def create_javascript_node(state: ReportState) -> ReportState:
     # Bước tạo JavaScript
     progress_tracker.update_step(session_id, 6, f"Tạo JavaScript (lần {state[js_attempt_key]})", "Tạo tương tác JS từ nội dung HTML")
     
-    # Đọc prompt tạo JavaScript
-    js_prompt = read_prompt_file('prompt_create_javascript.md')
+    # Đọc prompt tạo JavaScript từ biến môi trường
+    js_prompt = get_prompt_from_env('prompt_create_javascript')
     if not js_prompt:
-        error_msg = "Không thể đọc prompt tạo JavaScript"
+        error_msg = "Không thể đọc prompt tạo JavaScript từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
@@ -184,10 +184,10 @@ def create_css_node(state: ReportState) -> ReportState:
     # Bước tạo CSS
     progress_tracker.update_step(session_id, 7, f"Tạo CSS (lần {state[css_attempt_key]})", "Tạo styling CSS từ nội dung HTML")
     
-    # Đọc prompt tạo CSS
-    css_prompt = read_prompt_file('prompt_create_css.md')
+    # Đọc prompt tạo CSS từ biến môi trường
+    css_prompt = get_prompt_from_env('prompt_create_css')
     if not css_prompt:
-        error_msg = "Không thể đọc prompt tạo CSS"
+        error_msg = "Không thể đọc prompt tạo CSS từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)

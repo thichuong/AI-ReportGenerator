@@ -3,7 +3,7 @@ Node để soạn nội dung báo cáo markdown từ nội dung nghiên cứu
 """
 import time
 from google.genai import types
-from .base import ReportState, read_prompt_file
+from .base import ReportState, read_prompt_file, get_prompt_from_env
 from ...services.progress_tracker import progress_tracker
 
 
@@ -23,10 +23,10 @@ def generate_report_content_node(state: ReportState) -> ReportState:
         "Tạo nội dung báo cáo markdown"
     )
 
-    # Đọc prompt soạn báo cáo
-    prompt = read_prompt_file('prompt_generate_report.md')
+    # Đọc prompt soạn báo cáo từ biến môi trường
+    prompt = get_prompt_from_env('prompt_generate_report')
     if not prompt:
-        error_msg = "Không thể đọc prompt soạn báo cáo"
+        error_msg = "Không thể đọc prompt soạn báo cáo từ biến môi trường"
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)

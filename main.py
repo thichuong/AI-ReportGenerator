@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 from app.routers import articles, reports
 from app.db.session import create_tables
 from app.services.auto_report_scheduler import start_auto_report_scheduler
+from app.utils.prompt_env_loader import load_prompt_envs
 
 # Load environment variables
 load_dotenv()
+
+# Load all prompt environment variables from prompt_envs directory
+load_prompt_envs()
 
 # Tạo instance FastAPI
 app = FastAPI(

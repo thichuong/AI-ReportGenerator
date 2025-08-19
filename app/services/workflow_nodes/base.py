@@ -134,6 +134,50 @@ def replace_date_placeholders(prompt_text):
     return prompt_text
 
 
+def get_prompt_from_env(prompt_name: str) -> Optional[str]:
+    """
+    Lấy prompt từ biến môi trường.
+    
+    Args:
+        prompt_name: Tên của biến môi trường prompt (ví dụ: 'prompt_create_html')
+        
+    Returns:
+        Nội dung prompt hoặc None nếu không tìm thấy
+    """
+    prompt_content = os.environ.get(prompt_name)
+    
+    if not prompt_content:
+        print(f"Cảnh báo: Không tìm thấy prompt '{prompt_name}' trong biến môi trường")
+        return None
+        
+    # Thay thế placeholder CSS nếu có
+    if "{{ @css_root }}" in prompt_content:
+        # Đọc colors.css từ app/static/css
+        current_dir = os.path.dirname(__file__)
+        project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
+        colors_path = os.path.join(project_root, 'app', 'static', 'css', 'colors.css')
+        
+        colors_content = ""
+        if os.path.exists(colors_path):
+            try:
+                with open(colors_path, 'r', encoding='utf-8') as f:
+                    colors_file_content = f.read()
+                    # Lấy nội dung :root
+                    colors_match = re.search(r':root\s*{([^}]+)}', colors_file_content, re.DOTALL)
+                    if colors_match:
+                        colors_content = colors_match.group(1).strip()
+                    else:
+                        print("Cảnh báo: Không tìm thấy nội dung :root trong colors.css")
+            except Exception as e:
+                print(f"Lỗi khi đọc colors.css: {e}")
+        else:
+            print(f"Cảnh báo: colors.css không tồn tại tại {colors_path}")
+        
+        prompt_content = prompt_content.replace("{{ @css_root }}", colors_content)
+    
+    return prompt_content
+
+
 def extract_code_blocks(response_text):
     """Trích xuất các khối mã nguồn (html, css, js) từ phản hồi của Gemini."""
     # Kiểm tra input
