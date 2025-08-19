@@ -45,7 +45,7 @@ for f in "${FILES[@]}"; do
   fi
 
   echo "Key: $key"
-  # Do not print value
+  # Do not print full value for security
 
   if [[ $DRY_RUN -eq 1 ]]; then
     echo "DRY RUN: railway variables --set \"$key=...\" --skip-deploys"
@@ -54,8 +54,8 @@ for f in "${FILES[@]}"; do
 
   # Set variable on Railway. Use --skip-deploys to avoid triggering deploys.
   # The value may contain newlines; pass it safely as a single argument.
-  # Note: railway CLI accepts multiline values, but if you have problems, consider encoding.
-  printf '%s' "$value" | { read -r v; railway variables --set "$key=$v" --skip-deploys; }
+  # Note: railway CLI accepts multiline values
+  railway variables --set "$key=$value" --skip-deploys
 
   if [[ $? -eq 0 ]]; then
     echo "Uploaded: $key"
