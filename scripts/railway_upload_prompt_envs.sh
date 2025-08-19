@@ -48,25 +48,20 @@ for f in "${FILES[@]}"; do
   # Do not print value
 
   if [[ $DRY_RUN -eq 1 ]]; then
-    echo "DRY RUN: railway variables --set \"$key\" --value-from-file <temp-file> --skip-deploys"
-    echo "Value length: ${#value} characters"
+    echo "DRY RUN: railway variables --set \"$key=...\" --skip-deploys"
     continue
   fi
 
   # Set variable on Railway. Use --skip-deploys to avoid triggering deploys.
-  # The value may contain newlines; pass it safely via a temporary file.
-  temp_file=$(mktemp)
-  echo -n "$value" > "$temp_file"
-  
-  railway variables --set "$key" --value-from-file "$temp_file" --skip-deploys
-  
+  # The value may contain newlines; pass it safely as a single argument.
+  # Note: railway CLI accepts multiline values, but if you have problems, consider encoding.
+  printf '%s' "$value" | { read -r v; railway variables --set "$key=$v" --skip-deploys; }
+
   if [[ $? -eq 0 ]]; then
-    echo "✅ Uploaded: $key"
+    echo "Uploaded: $key"
   else
-    echo "❌ Failed to upload: $key" >&2
+    echo "Failed to upload: $key" >&2
   fi
-  
-  rm -f "$temp_file"
 
 done
 
