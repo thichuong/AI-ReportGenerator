@@ -310,7 +310,12 @@ def get_realtime_dashboard_data():
 
         combined_data["data_source"] = "real_time"
         
-        print(f"Successfully got real-time data: {list(combined_data.keys())}")
+        # Log both keys and values; use json.dumps with default=str to avoid serialization errors
+        try:
+            print("Successfully got real-time data:", json.dumps(combined_data, ensure_ascii=False, default=str))
+        except Exception:
+            # Fallback to repr if JSON serialization fails for some values
+            print("Successfully got real-time data (repr fallback):", repr(combined_data))
         return combined_data
         
     except Exception as e:
