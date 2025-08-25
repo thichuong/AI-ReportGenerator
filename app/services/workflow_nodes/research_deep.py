@@ -64,46 +64,55 @@ def research_deep_node(state: ReportState) -> ReportState:
             ),
         ]
         
-        # Retry cho combined API call
-        for api_attempt in range(3):
-            try:
-                progress_tracker.update_step(session_id, details=f"Gọi Combined AI API (lần {api_attempt + 1}/3)...")
-                response = state["client"].models.generate_content(
-                    model=state["model"],
-                    contents=contents,
-                    config=generate_content_config
-                )
-                break
-            except Exception as api_error:
-                if api_attempt < 2:
-                    wait_time = (api_attempt + 1) * 45  # Longer wait for complex combined calls
-                    # Log error và chờ retry
-                    progress_tracker.update_step(session_id, details=f"Lỗi Combined API, chờ {wait_time}s... ({api_error})")
-                    time.sleep(wait_time)
-                else:
-                    raise api_error
+        # Gọi API 3 lần để có 3 response khác nhau (do model không hỗ trợ multiple candidates)
+        all_responses = []
         
-        # Kiểm tra response
-        if not response or not hasattr(response, 'text'):
-            error_msg = f"Lần thử {state['current_attempt']}: Combined response không hợp lệ từ AI"
-            state["error_messages"].append(error_msg)
-            progress_tracker.update_step(session_id, details=error_msg)
-            state["success"] = False
-            return state
+        for call_attempt in range(3):
+            progress_tracker.update_step(session_id, details=f"Gọi Combined AI API lần {call_attempt + 1}/3...")
             
-        full_response_text = response.text
+            # Retry cho mỗi API call
+            response = None
+            for api_attempt in range(3):
+                try:
+                    response = state["client"].models.generate_content(
+                        model=state["model"],
+                        contents=contents,
+                        config=generate_content_config
+                    )
+                    break
+                except Exception as api_error:
+                    if api_attempt < 2:
+                        wait_time = (api_attempt + 1) * 30
+                        progress_tracker.update_step(session_id, details=f"Lỗi API call {call_attempt + 1}, retry {api_attempt + 1}, chờ {wait_time}s... ({api_error})")
+                        time.sleep(wait_time)
+                    else:
+                        # Nếu hết retry cho call này, log error nhưng tiếp tục với call tiếp theo
+                        progress_tracker.update_step(session_id, details=f"Lỗi API call {call_attempt + 1} sau 3 lần thử: {api_error}")
+                        response = None
+                        break
+            
+            # Kiểm tra và lưu response
+            if response and hasattr(response, 'text') and response.text:
+                all_responses.append(f"=== RESPONSE {call_attempt + 1} ===\n{response.text}\n")
+                progress_tracker.update_step(session_id, details=f"✓ Thành công API call {call_attempt + 1}/3")
+            else:
+                progress_tracker.update_step(session_id, details=f"✗ Không nhận được response hợp lệ từ call {call_attempt + 1}")
         
-        if not full_response_text:
-            error_msg = f"Lần thử {state['current_attempt']}: Không nhận được nội dung từ Combined AI"
+        # Kiểm tra có ít nhất 1 response thành công
+        if not all_responses:
+            error_msg = f"Lần thử {state['current_attempt']}: Không nhận được response hợp lệ từ bất kỳ API call nào"
             state["error_messages"].append(error_msg)
             progress_tracker.update_step(session_id, details=error_msg)
             state["success"] = False
             return state
+        
+        # Kết hợp tất cả responses
+        full_response_text = "\n".join(all_responses)
         
         # Parse combined response để extract research content và validation result
-        progress_tracker.update_step(session_id, details="Parsing combined response...")
+        progress_tracker.update_step(session_id, details=f"Parsing combined response với {len(all_responses)} responses...")
         
-        # Tìm validation result trong response
+        # Tìm validation result trong toàn bộ combined response
         validation_result = check_report_validation(full_response_text)
         state["validation_result"] = validation_result
         
@@ -124,7 +133,7 @@ def research_deep_node(state: ReportState) -> ReportState:
         
         # Log response length for debugging
         progress_tracker.update_step(session_id, details=
-            f"✓ Combined response: {len(full_response_text)} chars, "
+            f"✓ Combined response: {len(full_response_text)} chars từ {len(all_responses)} responses, "
             f"validation: {validation_result}")
         
     except Exception as e:
