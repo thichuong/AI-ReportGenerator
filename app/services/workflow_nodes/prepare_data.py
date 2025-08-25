@@ -33,7 +33,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
     )
     
     # Đọc prompt combined research + validation từ biến môi trường và thay thế ngày tháng
-    research_analysis_prompt = get_prompt_from_env("prompt_combined_research_validation")
+    research_analysis_prompt = get_prompt_from_env("combined_research_validation")
     if research_analysis_prompt is None:
         error_msg = "Không thể đọc prompt combined research + validation từ biến môi trường"
         state["error_messages"].append(error_msg)
@@ -56,7 +56,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
         return state
     
     # Đọc prompt data validation từ biến môi trường
-    data_validation_prompt = get_prompt_from_env("prompt_data_validation")
+    data_validation_prompt = get_prompt_from_env("data_validation")
     if data_validation_prompt is None:
         error_msg = "Không thể đọc prompt data validation từ biến môi trường"
         state["error_messages"].append(error_msg)
@@ -67,7 +67,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
     state["data_validation_prompt"] = data_validation_prompt
     
     # Đọc prompt tạo giao diện từ biến môi trường
-    create_report_prompt = get_prompt_from_env("prompt_create_report")
+    create_report_prompt = get_prompt_from_env("create_report")
     if create_report_prompt is None:
         error_msg = "Không thể đọc prompt tạo giao diện từ biến môi trường"
         state["error_messages"].append(error_msg)

@@ -24,7 +24,7 @@ def generate_report_content_node(state: ReportState) -> ReportState:
     )
 
     # Đọc prompt soạn báo cáo từ biến môi trường
-    prompt = get_prompt_from_env('prompt_generate_report')
+    prompt = get_prompt_from_env('generate_report')
     if not prompt:
         error_msg = "Không thể đọc prompt soạn báo cáo từ biến môi trường"
         state["error_messages"].append(error_msg)

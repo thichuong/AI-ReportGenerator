@@ -20,7 +20,7 @@ def create_html_node(state: ReportState) -> ReportState:
     progress_tracker.update_step(session_id, 5, f"Tạo HTML (lần {state[html_attempt_key]})", "Tạo cấu trúc HTML từ nội dung báo cáo")
     
     # Đọc prompt tạo HTML từ biến môi trường
-    html_prompt = get_prompt_from_env('prompt_create_html')
+    html_prompt = get_prompt_from_env('create_html')
     if not html_prompt:
         error_msg = "Không thể đọc prompt tạo HTML từ biến môi trường"
         state["error_messages"].append(error_msg)
@@ -105,7 +105,7 @@ def create_javascript_node(state: ReportState) -> ReportState:
     progress_tracker.update_step(session_id, 6, f"Tạo JavaScript (lần {state[js_attempt_key]})", "Tạo tương tác JS từ nội dung HTML")
     
     # Đọc prompt tạo JavaScript từ biến môi trường
-    js_prompt = get_prompt_from_env('prompt_create_javascript')
+    js_prompt = get_prompt_from_env('create_javascript')
     if not js_prompt:
         error_msg = "Không thể đọc prompt tạo JavaScript từ biến môi trường"
         state["error_messages"].append(error_msg)
@@ -185,7 +185,7 @@ def create_css_node(state: ReportState) -> ReportState:
     progress_tracker.update_step(session_id, 7, f"Tạo CSS (lần {state[css_attempt_key]})", "Tạo styling CSS từ nội dung HTML")
     
     # Đọc prompt tạo CSS từ biến môi trường
-    css_prompt = get_prompt_from_env('prompt_create_css')
+    css_prompt = get_prompt_from_env('create_css')
     if not css_prompt:
         error_msg = "Không thể đọc prompt tạo CSS từ biến môi trường"
         state["error_messages"].append(error_msg)

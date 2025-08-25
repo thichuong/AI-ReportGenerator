@@ -8,7 +8,7 @@ from ...services.progress_tracker import progress_tracker
 def extract_code_node(state: ReportState) -> ReportState:
     """Node để trích xuất các khối mã từ phản hồi interface"""
     session_id = state["session_id"]
-    progress_tracker.update_step(session_id, 5, "Trích xuất mã nguồn", "Tách HTML, CSS, JavaScript")
+    progress_tracker.update_step(session_id, 6, "Trích xuất mã nguồn", "Tách HTML, CSS, JavaScript")
     
     # Kiểm tra interface_content trước khi trích xuất
     if not state.get("interface_content"):

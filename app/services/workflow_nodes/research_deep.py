@@ -11,6 +11,10 @@ from ...services.progress_tracker import progress_tracker
 def research_deep_node(state: ReportState) -> ReportState:
     """Node để thực hiện nghiên cứu sâu + validation với Google Search và real-time data trong 1 lần gọi"""
     session_id = state["session_id"]
+    
+    # Initialize current_attempt if not exists
+    if "current_attempt" not in state:
+        state["current_attempt"] = 0
     state["current_attempt"] += 1
     
     progress_tracker.update_step(session_id, 2, f"Research + Validation (lần {state['current_attempt']})", 

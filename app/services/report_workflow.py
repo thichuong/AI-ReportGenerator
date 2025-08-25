@@ -53,18 +53,13 @@ def _build_workflow() -> Any:
     from .workflow_nodes.research_deep import research_deep_node
     from .workflow_nodes.validate_report import validate_report_node
     from .workflow_nodes.generate_report_content import generate_report_content_node
-    from .workflow_nodes.create_interface_components import (
-        create_html_node,
-        create_javascript_node,
-        create_css_node,
-    )
+    from .workflow_nodes.create_interface import create_interface_node
+    from .workflow_nodes.extract_code import extract_code_node
     from .workflow_nodes.translate_content import translate_content_node
     from .workflow_nodes.save_database import save_database_node
     from .workflow_nodes.routing import (
         should_retry_or_continue,
-        should_retry_html_or_continue,
-        should_retry_js_or_continue,
-        should_retry_css_or_continue,
+        should_retry_interface_or_continue,
     )
 
     workflow = StateGraph(ReportState)
@@ -73,9 +68,8 @@ def _build_workflow() -> Any:
     workflow.add_node("research_deep", research_deep_node)
     workflow.add_node("validate_report", validate_report_node)
     workflow.add_node("generate_report_content", generate_report_content_node)
-    workflow.add_node("create_html", create_html_node)
-    workflow.add_node("create_javascript", create_javascript_node)
-    workflow.add_node("create_css", create_css_node)
+    workflow.add_node("create_interface", create_interface_node)
+    workflow.add_node("extract_code", extract_code_node)
     workflow.add_node("translate_content", translate_content_node)
     workflow.add_node("save_database", save_database_node)
 
@@ -90,24 +84,14 @@ def _build_workflow() -> Any:
         {"retry": "research_deep", "continue": "generate_report_content", "end": END},
     )
 
-    workflow.add_edge("generate_report_content", "create_html")
+    workflow.add_edge("generate_report_content", "create_interface")
+
+    workflow.add_edge("create_interface", "extract_code")
 
     workflow.add_conditional_edges(
-        "create_html",
-        should_retry_html_or_continue,
-        {"retry_html": "create_html", "continue": "create_javascript", "end": END},
-    )
-
-    workflow.add_conditional_edges(
-        "create_javascript",
-        should_retry_js_or_continue,
-        {"retry_js": "create_javascript", "continue": "create_css", "end": END},
-    )
-
-    workflow.add_conditional_edges(
-        "create_css",
-        should_retry_css_or_continue,
-        {"retry_css": "create_css", "continue": "translate_content", "end": END},
+        "extract_code",
+        should_retry_interface_or_continue,
+        {"retry_interface": "create_interface", "continue": "translate_content", "end": END},
     )
 
     workflow.add_edge("translate_content", "save_database")
@@ -138,9 +122,7 @@ def generate_auto_research_report_langgraph_v2(api_key: str, max_attempts: int =
         "created_at": datetime.utcnow().isoformat(),
         "success": False,
         "error_messages": [],
-        "html_attempt": 0,
-        "js_attempt": 0,
-        "css_attempt": 0,
+        "interface_attempt": 0,
     }
 
     try:
@@ -174,9 +156,7 @@ def generate_auto_research_report_langgraph_v2(api_key: str, max_attempts: int =
         "error_messages": final.get("error_messages", []),
         "execution_time": exec_time,
         "validation_result": final.get("validation_result", "UNKNOWN"),
-        "html_attempt": final.get("html_attempt", 0),
-        "js_attempt": final.get("js_attempt", 0),
-        "css_attempt": final.get("css_attempt", 0),
+        "interface_attempt": final.get("interface_attempt", 0),
     }
 
     if not result["success"]:

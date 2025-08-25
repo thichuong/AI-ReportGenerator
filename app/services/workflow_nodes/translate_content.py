@@ -9,8 +9,7 @@ from ...services.progress_tracker import progress_tracker
 
 def translate_content_node(state: ReportState) -> Dict[str, Any]:
     """
-    Node để dịch nội dung HTML từ tiếng Việt sang tiếng Anh bằng AI.
-    Note: JavaScript translation removed - JS now supports multi-language natively.
+    Node để dịch nội dung HTML và JavaScript từ tiếng Việt sang tiếng Anh bằng AI.
     
     Args:
         state: Trạng thái hiện tại của workflow
@@ -19,11 +18,11 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
         Dict chứa nội dung đã dịch
     """
     session_id = state["session_id"]
-    progress_tracker.update_step(session_id, 8, "Dịch nội dung", "Dịch HTML từ tiếng Việt sang tiếng Anh")
+    progress_tracker.update_step(session_id, 8, "Dịch nội dung", "Dịch HTML và JavaScript từ tiếng Việt sang tiếng Anh")
     
     try:
         print("\n=== BƯỚC DỊCH NỘI DUNG ===")
-        print("Bắt đầu dịch HTML content từ tiếng Việt sang tiếng Anh...")
+        print("Bắt đầu dịch HTML và JavaScript content từ tiếng Việt sang tiếng Anh...")
         
         translated_html = None
         translated_js = None
@@ -45,8 +44,24 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
             else:
                 print("✗ Dịch HTML content thất bại")
         
-        # JavaScript translation removed - JS now supports multi-language natively
-        translated_js = None
+        # Dịch JavaScript content
+        if state.get("js_content"):
+            print("Đang dịch JavaScript content...")
+            progress_tracker.update_step(session_id, details="Đang dịch JavaScript content...")
+            translated_js = _translate_with_ai(
+                state["client"], 
+                state["model"], 
+                state["js_content"], 
+                "javascript",
+                session_id
+            )
+            if translated_js:
+                print("✓ JavaScript content đã được dịch thành công")
+                progress_tracker.update_step(session_id, details=f"✓ JavaScript đã dịch - {len(translated_js)} chars")
+            else:
+                print("✗ Dịch JavaScript content thất bại")
+        else:
+            translated_js = None
         
         # Cập nhật state với nội dung đã dịch và trả về state để tiếp tục workflow
         if translated_html:
@@ -83,13 +98,12 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
 def _translate_with_ai(client, model, content: str, content_type: str, session_id: str) -> str:
     """
     Dịch nội dung bằng AI.
-    Note: JavaScript translation has been removed - JS now supports multi-language natively.
     
     Args:
         client: Google GenAI client
         model: Model name
         content: Nội dung cần dịch
-        content_type: Loại nội dung ("html" only - javascript no longer supported)
+        content_type: Loại nội dung ("html" hoặc "javascript")
         session_id: Session ID cho progress tracking
         
     Returns:
@@ -98,15 +112,23 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
     if not content or len(content.strip()) == 0:
         return None
     
-    # Tạo prompt dịch cho HTML content: đọc từ biến môi trường để dễ bảo trì
+    # Tạo prompt dịch dựa trên loại content
     if content_type == "html":
-        prompt_template = get_prompt_from_env('prompt_translate_html')
+        prompt_template = get_prompt_from_env('translate_html')
         if prompt_template is None:
             print("ERROR: Không thể đọc prompt_translate_html từ biến môi trường")
             return None
         prompt = prompt_template.replace('{content}', content)
-    else:  # JavaScript translation no longer supported
-        print(f"WARNING: JavaScript translation is no longer supported. Content type: {content_type}")
+    elif content_type == "javascript":
+        prompt_template = get_prompt_from_env('translate_js')
+        if prompt_template is None:
+            print("ERROR: Không thể đọc prompt_translate_js từ biến môi trường")
+            return None
+        prompt = prompt_template.replace('{js_content}', content)
+        # Nếu có HTML content trong state, có thể thêm vào
+        # prompt = prompt.replace('{html_content}', state.get('html_content', ''))
+    else:
+        print(f"ERROR: Loại content không được hỗ trợ: {content_type}")
         return None
     
     # Tạo request cho AI

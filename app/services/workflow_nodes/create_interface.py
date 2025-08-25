@@ -2,8 +2,9 @@
 Node tạo giao diện từ báo cáo nghiên cứu
 """
 import time
+import re
 from google.genai import types
-from .base import ReportState
+from .base import ReportState, read_prompt_file, get_prompt_from_env
 from ...services.progress_tracker import progress_tracker
 
 
@@ -15,10 +16,12 @@ def create_interface_node(state: ReportState) -> ReportState:
         state[interface_attempt_key] = 0
     state[interface_attempt_key] += 1
     
-    progress_tracker.update_step(session_id, 4, f"Tạo giao diện (lần {state[interface_attempt_key]})", "Chuẩn bị tạo HTML, CSS, JS")
-    
+    progress_tracker.update_step(session_id, 5, f"Tạo giao diện (lần {state[interface_attempt_key]})", "Chuẩn bị tạo HTML, CSS, JS")
+    report_md = state.get('report_content') or state.get('research_content', '')
+    create_report_prompt = get_prompt_from_env('create_report')
+    print(create_report_prompt)
     # Tạo request đầy đủ
-    full_request = f"{state['create_report_prompt']}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{state['research_content']}"
+    full_request = f"{create_report_prompt}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{report_md}"
     
     interface_contents = [
         types.Content(
@@ -30,7 +33,7 @@ def create_interface_node(state: ReportState) -> ReportState:
     ]
     
     simple_config = types.GenerateContentConfig(
-        temperature=0.3,
+        temperature=0.1,
         candidate_count=1,
     )
     

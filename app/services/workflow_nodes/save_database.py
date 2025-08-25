@@ -39,7 +39,7 @@ def save_report_to_database(state: ReportState) -> ReportState:
                 css_content=state.get("css_content", ""),
                 js_content=state.get("js_content", ""),
                 html_content_en=state.get("html_content_en"),
-                js_content_en=None
+                js_content_en=state.get("js_content_en"),
             )
             
             progress_tracker.update_step(session_id, details="Committing to database...")
