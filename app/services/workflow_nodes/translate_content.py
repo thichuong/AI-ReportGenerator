@@ -18,7 +18,7 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
         Dict chứa nội dung đã dịch
     """
     session_id = state["session_id"]
-    progress_tracker.update_step(session_id, 8, "Dịch nội dung", "Dịch HTML và JavaScript từ tiếng Việt sang tiếng Anh")
+    progress_tracker.update_step(session_id, 7, "Dịch nội dung", "Dịch HTML và JavaScript từ tiếng Việt sang tiếng Anh")
     
     try:
         print("\n=== BƯỚC DỊCH NỘI DUNG ===")

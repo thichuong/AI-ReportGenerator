@@ -19,7 +19,6 @@ def create_interface_node(state: ReportState) -> ReportState:
     progress_tracker.update_step(session_id, 5, f"Tạo giao diện (lần {state[interface_attempt_key]})", "Chuẩn bị tạo HTML, CSS, JS")
     report_md = state.get('report_content') or state.get('research_content', '')
     create_report_prompt = get_prompt_from_env('create_report')
-    print(create_report_prompt)
     # Tạo request đầy đủ
     full_request = f"{create_report_prompt}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{report_md}"
     

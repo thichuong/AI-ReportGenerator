@@ -110,7 +110,7 @@ def generate_auto_research_report_langgraph_v2(api_key: str, max_attempts: int =
     if session_id is None:
         session_id = str(uuid.uuid4())
 
-    progress_tracker.start_progress(session_id, total_steps=10)
+    progress_tracker.start_progress(session_id, total_steps=9)
     progress_tracker.update_step(session_id, 0, "starting", "Initializing report workflow v2")
 
     workflow = _build_workflow()
