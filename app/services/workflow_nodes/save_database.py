@@ -16,12 +16,37 @@ def save_report_to_database(state: ReportState) -> ReportState:
     # Validate required data
     if "error_messages" not in state:
         state["error_messages"] = []
+    
+    # Kiểm tra tất cả dữ liệu có đủ không
+    required_fields = {
+        "html_content": "HTML content",
+        "css_content": "CSS content", 
+        "js_content": "JavaScript content",
+        "html_content_en": "English HTML content",
+        "js_content_en": "English JavaScript content"
+    }
+    
+    missing_fields = []
+    empty_fields = []
+    
+    for field, description in required_fields.items():
+        if field not in state:
+            missing_fields.append(description)
+        elif not state.get(field) or (isinstance(state.get(field), str) and len(state.get(field).strip()) == 0):
+            empty_fields.append(description)
+    
+    if missing_fields or empty_fields:
+        error_messages = []
+        if missing_fields:
+            error_messages.append(f"Missing fields: {', '.join(missing_fields)}")
+        if empty_fields:
+            error_messages.append(f"Empty fields: {', '.join(empty_fields)}")
         
-    if not state.get("html_content"):
-        error_msg = "No HTML content to save"
+        error_msg = "Cannot save incomplete report. " + "; ".join(error_messages)
         state["error_messages"].append(error_msg)
         state["success"] = False
         progress_tracker.error_progress(session_id, error_msg)
+        print(f"Validation Error: {error_msg}")
         return state
     
     for attempt in range(max_retries):

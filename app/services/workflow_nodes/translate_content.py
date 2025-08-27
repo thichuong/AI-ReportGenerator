@@ -167,10 +167,21 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
                         # Bỏ dòng đầu và cuối (markdown markers)
                         translated_content = '\n'.join(lines[1:-1])
                 
-                return translated_content
+                # Kiểm tra nếu nội dung có thực sự có ý nghĩa
+                if translated_content and len(translated_content.strip()) > 0:
+                    return translated_content
+                else:
+                    print(f"WARNING: AI trả về nội dung rỗng cho {content_type}, thử lại...")
+                    if attempt < 2:
+                        continue  # Thử lại trong vòng lặp
+                    else:
+                        return None
             else:
-                print(f"WARNING: AI không trả về nội dung cho {content_type}")
-                return None
+                print(f"WARNING: AI không trả về nội dung cho {content_type}, thử lại...")
+                if attempt < 2:
+                    continue  # Thử lại trong vòng lặp
+                else:
+                    return None
                 
         except Exception as e:
             if attempt < 2:
