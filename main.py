@@ -3,7 +3,7 @@
 """
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from app.routers import articles, reports
+from app.routers import articles, reports, market
 from app.db.session import create_tables
 from app.services.auto_report_scheduler import start_auto_report_scheduler
 from app.utils.prompt_env_loader import load_prompt_envs
@@ -48,6 +48,7 @@ async def startup_event():
 # Đăng ký router
 app.include_router(articles.router, prefix="/api/v1", tags=["articles"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
+app.include_router(market.router, prefix="/api/v1", tags=["market"])
 
 @app.get("/")
 async def root():

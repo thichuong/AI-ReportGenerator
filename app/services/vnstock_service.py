@@ -1,7 +1,7 @@
 """
 Service to fetch Vietnam market indices using vnstock package.
 
-Provides simple helper functions to retrieve latest index values for:
+Provides simple helper functions to retrieve latest real-time index values for:
  - VN-Index
  - VN30
  - HNX-Index
@@ -9,6 +9,7 @@ Provides simple helper functions to retrieve latest index values for:
  - UPCoM-Index
 
 Each function returns a tuple: (data_dict, error_message)
+Data is fetched with 1-minute interval for near real-time values.
 """
 from typing import Tuple, Dict, Optional
 import logging
@@ -30,6 +31,11 @@ def _ensure_vnstock() -> Optional[str]:
     if VCIQuote is None:
         return "vnstock package is not installed or VCI Quote adapter unavailable"
     return None
+
+
+def _get_start_date(days_back: int = 7) -> str:
+    """Get start date string for vnstock queries."""
+    return (datetime.datetime.now() - datetime.timedelta(days=days_back)).strftime('%Y-%m-%d')
 
 
 def _index_to_dict(idx) -> Dict:
@@ -94,7 +100,7 @@ def _index_to_dict(idx) -> Dict:
 
 
 def get_vnindex() -> Tuple[Optional[Dict], Optional[str]]:
-    """Return latest VN-Index data."""
+    """Return latest real-time VN-Index data."""
     err = _ensure_vnstock()
     if err:
         return None, err
@@ -103,7 +109,10 @@ def get_vnindex() -> Tuple[Optional[Dict], Optional[str]]:
         return None, "vnstock explorer VCI Quote is not available"
     try:
         q = VCIQuote('VNINDEX', show_log=False)
-        df = q.history(start=(None if None else '2020-01-01'), interval='1D', count_back=1)
+        # Get real-time data with 1-minute interval, last 1 data point
+        # Use 7 days ago as start date to ensure data availability
+        start_date = _get_start_date()
+        df = q.history(start=start_date, interval='1m', count_back=1)
         # df.tail(1) may be a DataFrame
         last = df.tail(1).iloc[0]
         return _index_to_dict(last), None
@@ -113,7 +122,7 @@ def get_vnindex() -> Tuple[Optional[Dict], Optional[str]]:
 
 
 def get_vn30() -> Tuple[Optional[Dict], Optional[str]]:
-    """Return latest VN30 data."""
+    """Return latest real-time VN30 data."""
     err = _ensure_vnstock()
     if err:
         return None, err
@@ -121,7 +130,10 @@ def get_vn30() -> Tuple[Optional[Dict], Optional[str]]:
         return None, "vnstock explorer VCI Quote is not available"
     try:
         q = VCIQuote('VN30', show_log=False)
-        df = q.history(start='2020-01-01', interval='1D', count_back=1)
+        # Get real-time data with 1-minute interval, last 1 data point
+        # Use 7 days ago as start date to ensure data availability
+        start_date = _get_start_date()
+        df = q.history(start=start_date, interval='1m', count_back=1)
         last = df.tail(1).iloc[0]
         return _index_to_dict(last), None
     except Exception as e:
@@ -134,7 +146,10 @@ def get_hnx_index() -> Tuple[Optional[Dict], Optional[str]]:
         return None, "vnstock explorer VCI Quote is not available"
     try:
         q = VCIQuote('HNXINDEX', show_log=False)
-        df = q.history(start='2020-01-01', interval='1D', count_back=1)
+        # Get real-time data with 1-minute interval, last 1 data point
+        # Use 7 days ago as start date to ensure data availability
+        start_date = _get_start_date()
+        df = q.history(start=start_date, interval='1m', count_back=1)
         last = df.tail(1).iloc[0]
         return _index_to_dict(last), None
     except Exception as e:
@@ -147,7 +162,10 @@ def get_hnx30() -> Tuple[Optional[Dict], Optional[str]]:
         return None, "vnstock explorer VCI Quote is not available"
     try:
         q = VCIQuote('HNX30', show_log=False)
-        df = q.history(start='2020-01-01', interval='1D', count_back=1)
+        # Get real-time data with 1-minute interval, last 1 data point
+        # Use 7 days ago as start date to ensure data availability
+        start_date = _get_start_date()
+        df = q.history(start=start_date, interval='1m', count_back=1)
         last = df.tail(1).iloc[0]
         return _index_to_dict(last), None
     except Exception as e:
@@ -161,7 +179,10 @@ def get_upcom_index() -> Tuple[Optional[Dict], Optional[str]]:
     try:
         # UPCOM is exposed as HNXUpcomIndex in mapping
         q = VCIQuote('UPCOMINDEX', show_log=False)
-        df = q.history(start='2020-01-01', interval='1D', count_back=1)
+        # Get real-time data with 1-minute interval, last 1 data point
+        # Use 7 days ago as start date to ensure data availability
+        start_date = _get_start_date()
+        df = q.history(start=start_date, interval='1m', count_back=1)
         last = df.tail(1).iloc[0]
         return _index_to_dict(last), None
     except Exception as e:
