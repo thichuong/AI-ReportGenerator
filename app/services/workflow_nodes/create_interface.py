@@ -32,7 +32,7 @@ def create_interface_node(state: ReportState) -> ReportState:
     ]
     
     simple_config = types.GenerateContentConfig(
-        temperature=0.1,
+        temperature=1.0,
         candidate_count=1,
     )
     
