@@ -4,10 +4,12 @@ Base types và utilities cho workflow
 import os
 import re
 import json
+import asyncio
 from datetime import datetime, timezone
 from typing import TypedDict, Optional, List
 from google import genai
 from google.genai import types
+import redis
 
 
 class ReportState(TypedDict):
@@ -246,80 +248,69 @@ def check_report_validation(report_text):
 
 
 def get_realtime_dashboard_data():
-    """Lấy dữ liệu thời gian thực từ các services cơ bản"""
-    try:
-        # Import trực tiếp các service cần thiết (bao gồm cả RSI)
-        from ... import services
-        import concurrent.futures
-        
-        print("Calling essential real-time data services...")
-        
-        # Định nghĩa các service calls cơ bản
-        def call_global_data():
-            return services.coingecko.get_global_market_data()
-        
-        def call_btc_data():
-            return services.coingecko.get_btc_price()
-        
-        def call_fng_data():
-            return services.alternative_me.get_fng_index()
-        
-        def call_btc_rsi():
-            return services.taapi.get_btc_rsi()
-        
-        
-        # Gọi tất cả API song song với timeout
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            future_global = executor.submit(call_global_data)
-            future_btc = executor.submit(call_btc_data)
-            future_fng = executor.submit(call_fng_data)
-            future_rsi = executor.submit(call_btc_rsi)
-            
-            # Chờ tất cả hoàn thành với timeout 10 giây
-            try:
-                global_data, global_error, global_status = future_global.result(timeout=10)
-                btc_data, btc_error, btc_status = future_btc.result(timeout=10)
-                fng_data, fng_error, fng_status = future_fng.result(timeout=10)
-                rsi_data, rsi_error, rsi_status = future_rsi.result(timeout=10)
-            except concurrent.futures.TimeoutError:
-                print("Timeout when getting real-time data")
-                return None
-
-        # Xử lý lỗi: không sử dụng dữ liệu fallback ở cấp này.
-        # Ghi log lỗi, trả về dữ liệu sẵn có; caller sẽ quyết định hành động khi thiếu trường dữ liệu.
-        if fng_error:
-            print("Warning: FNG data error:", fng_error)
-
-        if rsi_error:
-            print("Warning: RSI data error:", rsi_error)
-
-        if global_error and btc_error:
-            print("Error: Both global and BTC data failed; returning available data (no fallback)")
-
-        # Kết hợp tất cả dữ liệu thành một object duy nhất
-        # Chỉ merge những service trả về thành công (không có error)
-        combined_data = {}
-        if not global_error and global_data:
-            combined_data.update(global_data)
-        if not btc_error and btc_data:
-            combined_data.update(btc_data)
-        if not fng_error and fng_data:
-            combined_data.update(fng_data)
-        if not rsi_error and rsi_data:
-            combined_data.update(rsi_data)
-
-        combined_data["data_source"] = "real_time"
-        
-        # Log both keys and values; use json.dumps with default=str to avoid serialization errors
+    """Lấy dữ liệu crypto thời gian thực từ Redis với key 'latest_market_data'"""
+    max_retries = 3
+    retry_delay = 2  # giây
+    
+    for attempt in range(max_retries):
         try:
-            print("Successfully got real-time data:", json.dumps(combined_data, ensure_ascii=False, default=str))
-        except Exception:
-            # Fallback to repr if JSON serialization fails for some values
-            print("Successfully got real-time data (repr fallback):", repr(combined_data))
-        return combined_data
-        
-    except Exception as e:
-        print(f"Error getting real-time data: {e}")
-        import traceback
-        print(traceback.format_exc())
-        return None
+            # Lấy dữ liệu từ Redis
+            redis_url = os.getenv('REDIS_URL')
+            if not redis_url:
+                print("Warning: REDIS_URL not set, cannot fetch market data")
+                return None
+                
+            r = redis.Redis.from_url(redis_url)
+            cached_data = r.get('latest_market_data')
+            
+            if cached_data:
+                # Parse JSON data
+                try:
+                    full_data = json.loads(cached_data.decode('utf-8'))
+                    
+                    # Chỉ lấy dữ liệu crypto cần thiết
+                    crypto_data = {}
+                    
+                    # Mapping các trường crypto
+                    field_mappings = {
+                        'btc_price': ['btc_price', 'btc_price_usd', 'btc', 'bitcoin'],
+                        'rsi_14': ['rsi_14', 'btc_rsi', 'rsi', 'btc_rsi_14'],
+                        'btc_change_24h': ['btc_change_24h', 'btc_24h_change', 'bitcoin_change_24h'],
+                        'fear_greed_index': ['fear_greed_index', 'fng_value', 'fear_and_greed_index']
+                    }
+                    
+                    # Tìm và extract từng trường
+                    for target_field, possible_keys in field_mappings.items():
+                        for key in possible_keys:
+                            if key in full_data:
+                                crypto_data[target_field] = full_data[key]
+                                break
+                    
+                    # Thêm data_source
+                    crypto_data["data_source"] = "real_time"
+                    
+                    # In giá trị ra
+                    print("=== CRYPTO DATA FROM REDIS ===")
+                    print(f"BTC Price: {crypto_data.get('btc_price', 'N/A')}")
+                    print(f"RSI 14: {crypto_data.get('rsi_14', 'N/A')}")
+                    print(f"BTC Change 24h: {crypto_data.get('btc_change_24h', 'N/A')}")
+                    print(f"Fear & Greed Index: {crypto_data.get('fear_greed_index', 'N/A')}")
+                    print("============================")
+                    
+                    print(f"Successfully retrieved crypto data from Redis on attempt {attempt + 1}:", list(crypto_data.keys()))
+                    return crypto_data
+                    
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing cached market data: {e}")
+                    return None
+            else:
+                if attempt < max_retries - 1:
+                    print(f"No cached market data found in Redis (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay} seconds...")
+                    asyncio.run(asyncio.sleep(retry_delay))
+                else:
+                    print(f"No cached market data found in Redis after {max_retries} attempts")
+                    return None
+                    
+        except Exception as e:
+            print(f"Error getting cached crypto data from Redis: {e}")
+            return None
