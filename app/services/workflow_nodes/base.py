@@ -268,15 +268,55 @@ def get_realtime_dashboard_data():
                 try:
                     full_data = json.loads(cached_data.decode('utf-8'))
                     
-                    # Chỉ lấy dữ liệu crypto cần thiết
+                    # Lấy dữ liệu crypto đầy đủ hơn
                     crypto_data = {}
                     
-                    # Mapping các trường crypto
+                    # Mapping các trường crypto - Mở rộng để lấy nhiều chỉ số hơn
                     field_mappings = {
+                        # BTC metrics
                         'btc_price': ['btc_price', 'btc_price_usd', 'btc', 'bitcoin'],
-                        'rsi_14': ['rsi_14', 'btc_rsi', 'rsi', 'btc_rsi_14'],
                         'btc_change_24h': ['btc_change_24h', 'btc_24h_change', 'bitcoin_change_24h'],
-                        'fear_greed_index': ['fear_greed_index', 'fng_value', 'fear_and_greed_index']
+                        'btc_rsi_14': ['btc_rsi_14', 'rsi_14', 'btc_rsi', 'rsi'],
+                        
+                        # ETH metrics
+                        'eth_price': ['eth_price', 'eth_price_usd', 'eth', 'ethereum'],
+                        'eth_change_24h': ['eth_change_24h', 'eth_24h_change', 'ethereum_change_24h'],
+                        
+                        # SOL metrics
+                        'sol_price': ['sol_price', 'sol_price_usd', 'sol', 'solana'],
+                        'sol_change_24h': ['sol_change_24h', 'sol_24h_change', 'solana_change_24h'],
+                        
+                        # XRP metrics
+                        'xrp_price': ['xrp_price', 'xrp_price_usd', 'xrp'],
+                        'xrp_change_24h': ['xrp_change_24h', 'xrp_24h_change'],
+                        
+                        # ADA metrics
+                        'ada_price': ['ada_price', 'ada_price_usd', 'ada', 'cardano'],
+                        'ada_change_24h': ['ada_change_24h', 'ada_24h_change', 'cardano_change_24h'],
+                        
+                        # LINK metrics
+                        'link_price': ['link_price', 'link_price_usd', 'link', 'chainlink'],
+                        'link_change_24h': ['link_change_24h', 'link_24h_change', 'chainlink_change_24h'],
+                        
+                        # BNB metrics
+                        'bnb_price': ['bnb_price', 'bnb_price_usd', 'bnb', 'binance_coin'],
+                        'bnb_change_24h': ['bnb_change_24h', 'bnb_24h_change'],
+                        
+                        # Market metrics
+                        'market_cap': ['market_cap', 'market_cap_usd', 'total_market_cap'],
+                        'volume_24h': ['volume_24h', 'volume_24h_usd', 'total_volume_24h'],
+                        'market_cap_change_24h': ['market_cap_change_percentage_24h_usd', 'market_cap_change_24h', 'total_market_cap_change_24h'],
+                        
+                        # Dominance metrics
+                        'btc_dominance': ['btc_dominance', 'btc_market_cap_percentage', 'bitcoin_dominance'],
+                        'eth_dominance': ['eth_dominance', 'eth_market_cap_percentage', 'ethereum_dominance'],
+                        
+                        # Sentiment indicators
+                        'fear_greed_index': ['fear_greed_index', 'fng_value', 'fear_and_greed_index'],
+                        
+                        # Timestamp & source
+                        'timestamp': ['timestamp', 'last_updated', 'updated_at'],
+                        'source': ['source', 'data_source', 'normalized_by'],
                     }
                     
                     # Tìm và extract từng trường
@@ -286,18 +326,43 @@ def get_realtime_dashboard_data():
                                 crypto_data[target_field] = full_data[key]
                                 break
                     
+                    # Lấy thêm data_sources nếu có
+                    if 'data_sources' in full_data:
+                        crypto_data['data_sources'] = full_data['data_sources']
+                    
+                    # Lấy thêm partial_failure flag nếu có
+                    if 'partial_failure' in full_data:
+                        crypto_data['partial_failure'] = full_data['partial_failure']
+                    
+                    # Lấy thêm fetch_duration_ms nếu có
+                    if 'fetch_duration_ms' in full_data:
+                        crypto_data['fetch_duration_ms'] = full_data['fetch_duration_ms']
+                    
                     # Thêm data_source
                     crypto_data["data_source"] = "real_time"
                     
-                    # In giá trị ra
+                    # In giá trị ra - Mở rộng để hiển thị nhiều chỉ số hơn
                     print("=== CRYPTO DATA FROM REDIS ===")
                     print(f"BTC Price: {crypto_data.get('btc_price', 'N/A')}")
-                    print(f"RSI 14: {crypto_data.get('rsi_14', 'N/A')}")
-                    print(f"BTC Change 24h: {crypto_data.get('btc_change_24h', 'N/A')}")
+                    print(f"BTC Change 24h: {crypto_data.get('btc_change_24h', 'N/A')}%")
+                    print(f"BTC RSI 14: {crypto_data.get('btc_rsi_14', 'N/A')}")
+                    print(f"ETH Price: {crypto_data.get('eth_price', 'N/A')}")
+                    print(f"ETH Change 24h: {crypto_data.get('eth_change_24h', 'N/A')}%")
+                    print(f"SOL Price: {crypto_data.get('sol_price', 'N/A')}")
+                    print(f"XRP Price: {crypto_data.get('xrp_price', 'N/A')}")
+                    print(f"ADA Price: {crypto_data.get('ada_price', 'N/A')}")
+                    print(f"LINK Price: {crypto_data.get('link_price', 'N/A')}")
+                    print(f"BNB Price: {crypto_data.get('bnb_price', 'N/A')}")
+                    print(f"Market Cap: {crypto_data.get('market_cap', 'N/A')}")
+                    print(f"Market Cap Change 24h: {crypto_data.get('market_cap_change_24h', 'N/A')}%")
+                    print(f"Volume 24h: {crypto_data.get('volume_24h', 'N/A')}")
+                    print(f"BTC Dominance: {crypto_data.get('btc_dominance', 'N/A')}%")
+                    print(f"ETH Dominance: {crypto_data.get('eth_dominance', 'N/A')}%")
                     print(f"Fear & Greed Index: {crypto_data.get('fear_greed_index', 'N/A')}")
+                    print(f"Timestamp: {crypto_data.get('timestamp', 'N/A')}")
                     print("============================")
                     
-                    print(f"Successfully retrieved crypto data from Redis on attempt {attempt + 1}:", list(crypto_data.keys()))
+                    print(f"Successfully retrieved crypto data from Redis on attempt {attempt + 1}: {len(crypto_data)} fields")
                     return crypto_data
                     
                 except json.JSONDecodeError as e:
