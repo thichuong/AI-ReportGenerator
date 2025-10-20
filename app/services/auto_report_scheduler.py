@@ -1,4 +1,5 @@
 import os
+import gc
 import threading
 import time
 from datetime import datetime, timezone, timedelta
@@ -69,11 +70,22 @@ def schedule_auto_report(api_key, interval_hours=6):
                     duration = (end_time - start_time).total_seconds()
                     report_id = result.get('report_id')
                     print(f"[{end_time}] ✅ Scheduler: Báo cáo #{report_id} tạo thành công trong {duration:.1f}s")
+                    
+                    # Giải phóng bộ nhớ sau khi hoàn thành báo cáo
+                    del result
+                    gc.collect()
+                    print(f"[{datetime.now()}] 🧹 Memory cleanup completed")
+                    
                 elif isinstance(result, bool) and result:
                     consecutive_failures = 0  # Reset failure counter  
                     end_time = datetime.now()
                     duration = (end_time - start_time).total_seconds()
                     print(f"[{end_time}] ✅ Scheduler: Báo cáo tạo thành công trong {duration:.1f}s")
+                    
+                    # Giải phóng bộ nhớ
+                    del result
+                    gc.collect()
+                    print(f"[{datetime.now()}] 🧹 Memory cleanup completed")
                 else:
                     consecutive_failures += 1
                     error_info = ""
@@ -81,6 +93,10 @@ def schedule_auto_report(api_key, interval_hours=6):
                         error_info = f" - Errors: {result['errors'][:2]}"  # Show first 2 errors
                     
                     print(f"[{datetime.now()}] ❌ Scheduler: Tạo báo cáo thất bại ({consecutive_failures}/{max_consecutive_failures}){error_info}")
+                    
+                    # Giải phóng bộ nhớ ngay cả khi thất bại
+                    del result
+                    gc.collect()
                     
                     # Nếu thất bại liên tiếp quá nhiều, tăng interval
                     if consecutive_failures >= max_consecutive_failures:
@@ -93,6 +109,9 @@ def schedule_auto_report(api_key, interval_hours=6):
             except Exception as e:
                 consecutive_failures += 1
                 print(f"[{datetime.now()}] ❌ Scheduler error ({consecutive_failures}/{max_consecutive_failures}): {e}")
+                
+                # Giải phóng bộ nhớ khi có exception
+                gc.collect()
                 
                 # Nếu lỗi liên tiếp quá nhiều, restart scheduler
                 if consecutive_failures >= max_consecutive_failures:
@@ -169,29 +188,48 @@ def create_manual_report():
         if isinstance(result, dict) and result.get('success'):
             report_id = result.get('report_id')
             print(f"[{end_time}] ✅ Manual report #{report_id} created successfully in {duration:.1f}s")
-            return {
+            
+            response = {
                 'success': True,
                 'report_id': report_id,
                 'duration': duration,
                 'message': f'Báo cáo #{report_id} được tạo thành công trong {duration:.1f}s'
             }
+            
+            # Giải phóng bộ nhớ
+            del result
+            gc.collect()
+            print(f"[{datetime.now()}] 🧹 Memory cleanup completed")
+            
+            return response
         else:
             error_msg = 'Tạo báo cáo thất bại'
             if isinstance(result, dict) and result.get('errors'):
                 error_msg = f"Tạo báo cáo thất bại: {result['errors'][0] if result['errors'] else 'Unknown error'}"
             
             print(f"[{end_time}] ❌ Manual report failed in {duration:.1f}s: {error_msg}")
-            return {
+            
+            response = {
                 'success': False,
                 'duration': duration,
                 'error': error_msg
             }
+            
+            # Giải phóng bộ nhớ
+            del result
+            gc.collect()
+            
+            return response
             
     except Exception as e:
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
         error_msg = f"Lỗi khi tạo báo cáo: {str(e)}"
         print(f"[{end_time}] ❌ Manual report failed in {duration:.1f}s: {error_msg}")
+        
+        # Giải phóng bộ nhớ
+        gc.collect()
+        
         return {
             'success': False,
             'duration': duration,

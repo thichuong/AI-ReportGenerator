@@ -10,7 +10,7 @@ import redis.asyncio as redis
 router = APIRouter()
 
 async def fetch_and_store_market_indices():
-    """Lấy dữ liệu chỉ số thị trường và lưu vào Redis"""
+    """Lấy dữ liệu chỉ số thị trường và lưu vào Redis với cơ chế giải phóng bộ nhớ"""
     try:
         from app.services.vnstock_service import (
             get_vnindex, get_vn30, get_hnx_index, get_hnx30, get_upcom_index
@@ -29,13 +29,18 @@ async def fetch_and_store_market_indices():
 
         response_data = {'success': True, 'indices': data}
 
-        # Store in Redis
+        # Store in Redis using async context manager for automatic cleanup
         redis_url = os.getenv('REDIS_URL')
         if not redis_url:
             raise ValueError("REDIS_URL environment variable not set")
-        r = redis.Redis.from_url(redis_url)
-        await r.set('market_indices', json.dumps(response_data), ex=300)  # expire in 5 minutes
+        
+        # Sử dụng async context manager để tự động đóng kết nối
+        async with redis.Redis.from_url(redis_url) as redis_client:
+            await redis_client.set('market_indices', json.dumps(response_data), ex=300)  # expire in 5 minutes
 
+        # Giải phóng bộ nhớ sau khi lưu vào Redis
+        del data  # Xóa dictionary data khỏi bộ nhớ
+        
         return response_data
     except Exception as e:
         raise e
@@ -48,3 +53,7 @@ async def get_market_indices():
         return JSONResponse(response_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Gợi ý garbage collector thu hồi bộ nhớ không sử dụng
+        import gc
+        gc.collect()

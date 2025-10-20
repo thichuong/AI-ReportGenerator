@@ -1,4 +1,5 @@
 import time
+import gc
 import psycopg2
 from sqlalchemy.exc import OperationalError
 from .base import ReportState
@@ -79,6 +80,20 @@ def save_report_to_database(state: ReportState) -> ReportState:
             print(f"Database save successful - Report ID: {new_report.id}")
             
             session.close()
+            
+            # Giải phóng bộ nhớ sau khi lưu thành công
+            # Xóa các nội dung lớn khỏi state để giảm memory footprint
+            large_fields = ["html_content", "css_content", "js_content", 
+                          "html_content_en", "js_content_en"]
+            for field in large_fields:
+                if field in state:
+                    del state[field]
+            
+            # Thu hồi bộ nhớ
+            del new_report
+            gc.collect()
+            print(f"✅ Memory cleaned up after database save")
+            
             return state
             
         except (OperationalError, psycopg2.OperationalError) as e:
@@ -99,6 +114,8 @@ def save_report_to_database(state: ReportState) -> ReportState:
                 wait_time = 2 ** attempt
                 print(f"SSL error detected, retrying in {wait_time}s...")
                 progress_tracker.update_step(session_id, details=f"SSL error - retry in {wait_time}s...")
+                # Giải phóng bộ nhớ trước khi retry
+                gc.collect()
                 time.sleep(wait_time)
                 continue
             else:
@@ -123,6 +140,9 @@ def save_report_to_database(state: ReportState) -> ReportState:
             state["success"] = False
             progress_tracker.error_progress(session_id, error_msg)
             print(f"Error: {error_msg}")
+            
+            # Giải phóng bộ nhớ khi có lỗi
+            gc.collect()
             return state
     
     # If we get here, all attempts failed
@@ -138,6 +158,9 @@ def save_report_to_database(state: ReportState) -> ReportState:
     state["success"] = False
     progress_tracker.error_progress(session_id, error_msg)
     print(f"Error: {error_msg}")
+    
+    # Giải phóng bộ nhớ khi thất bại
+    gc.collect()
     return state
 
 
