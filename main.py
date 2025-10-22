@@ -51,19 +51,8 @@ async def startup_event():
     except Exception as e:
         print(f"❌ Error while starting auto report scheduler: {e}")
 
-    # Start market indices scheduler
-    try:
-        from app.routers.market import fetch_and_store_market_indices
-        scheduler.add_job(
-            fetch_and_store_market_indices,
-            trigger=IntervalTrigger(minutes=3),
-            id='fetch_market_indices',
-            name='Fetch and store market indices every 3 minutes'
-        )
-        scheduler.start()
-        print("✅ Market indices scheduler started (runs every 3 minutes)")
-    except Exception as e:
-        print(f"❌ Error while starting market indices scheduler: {e}")
+    # Market indices scheduler removed - not used in this project. If you need
+    # this functionality in the future, reintroduce the scheduling block here.
 
 # Shutdown scheduler when app stops
 @app.on_event("shutdown")
