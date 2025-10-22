@@ -86,4 +86,13 @@ def generate_report_content_node(state: ReportState) -> ReportState:
     state["success"] = True
     progress_tracker.update_step(session_id, details=f"✓ Soạn báo cáo hoàn thành - {len(report_md)} chars")
 
+    # 🧹 Memory cleanup - giải phóng temporary large objects
+    del full_request  # Xóa prompt + research_content (có thể 50KB+)
+    del contents  # Xóa request contents
+    del response  # Xóa response object
+    del report_md  # Xóa temporary variable (đã lưu vào state)
+    import gc
+    gc.collect()
+    print("🧹 [generate_report] Memory cleanup completed")
+
     return state

@@ -77,4 +77,12 @@ def create_interface_node(state: ReportState) -> ReportState:
     state["success"] = True
     progress_tracker.update_step(session_id, details="✓ Tạo giao diện hoàn thành")
     
+    # 🧹 Memory cleanup - giải phóng temporary large objects
+    del full_request  # Xóa prompt + report content (có thể 100KB+)
+    del interface_contents  # Xóa request contents
+    del interface_response  # Xóa response object với HTML/CSS/JS
+    import gc
+    gc.collect()
+    print("🧹 [create_interface] Memory cleanup completed")
+    
     return state

@@ -136,10 +136,21 @@ def research_deep_node(state: ReportState) -> ReportState:
             f"✓ Combined response: {len(full_response_text)} chars từ {len(all_responses)} responses, "
             f"validation: {validation_result}")
         
+        # 🧹 Memory cleanup - giải phóng temporary large objects
+        del all_responses  # Xóa list chứa 3 response texts lớn
+        del full_response_text  # Xóa combined text (đã lưu vào state["research_content"])
+        import gc
+        gc.collect()
+        print("🧹 [research_deep] Memory cleanup completed")
+        
     except Exception as e:
         error_msg = f"Lần thử {state['current_attempt']}: Lỗi khi gọi Combined AI: {e}"
         state["error_messages"].append(error_msg)
         progress_tracker.update_step(session_id, details=error_msg)
         state["success"] = False
+        
+        # 🧹 Memory cleanup ngay cả khi có lỗi
+        import gc
+        gc.collect()
     
     return state

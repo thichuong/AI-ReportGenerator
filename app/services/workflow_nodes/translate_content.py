@@ -64,25 +64,31 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
             translated_js = None
         
         # Cập nhật state với nội dung đã dịch và trả về state để tiếp tục workflow
+        translated_count = 0
+        
         if translated_html:
             state["html_content_en"] = translated_html
+            del translated_html  # 🧹 Cleanup immediately after saving
+            translated_count += 1
         else:
             # đảm bảo key tồn tại
             state.setdefault("html_content_en", None)
 
         if translated_js:
             state["js_content_en"] = translated_js
+            del translated_js  # 🧹 Cleanup immediately after saving
+            translated_count += 1
         else:
             state.setdefault("js_content_en", None)
 
-        translated_count = 0
-        if translated_html:
-            translated_count += 1
-        if translated_js:
-            translated_count += 1
-
         print(f"Translation node hoàn thành. Đã dịch {translated_count} nội dung.")
         progress_tracker.update_step(session_id, details=f"Hoàn thành dịch {translated_count} nội dung")
+        
+        # 🧹 Memory cleanup - force garbage collection
+        import gc
+        gc.collect()
+        print("🧹 [translate_content] Memory cleanup completed")
+        
         return state
         
     except Exception as e:
@@ -169,9 +175,16 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
                 
                 # Kiểm tra nếu nội dung có thực sự có ý nghĩa
                 if translated_content and len(translated_content.strip()) > 0:
-                    return translated_content
+                    result = translated_content
+                    # 🧹 Cleanup response object trước khi return
+                    del response
+                    del translated_content
+                    return result
                 else:
                     print(f"WARNING: AI trả về nội dung rỗng cho {content_type}, thử lại...")
+                    # 🧹 Cleanup trước khi retry
+                    del response
+                    del translated_content
                     if attempt < 2:
                         continue  # Thử lại trong vòng lặp
                     else:

@@ -42,6 +42,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
         return state
         
     state["research_analysis_prompt"] = replace_date_placeholders(research_analysis_prompt)
+    del research_analysis_prompt  # 🧹 Cleanup original prompt string
     
     # Khởi tạo Gemini client
     try:
@@ -65,6 +66,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
         return state
 
     state["data_validation_prompt"] = data_validation_prompt
+    del data_validation_prompt  # 🧹 Cleanup original prompt string
     
     # Đọc prompt tạo giao diện từ biến môi trường
     create_report_prompt = get_prompt_from_env("create_report")
@@ -76,6 +78,7 @@ def prepare_data_node(state: ReportState) -> ReportState:
         return state
 
     state["create_report_prompt"] = create_report_prompt
+    del create_report_prompt  # 🧹 Cleanup original prompt string
     state["current_attempt"] = 0
     
     # Lấy dữ liệu real-time một lần duy nhất và cache vào state
