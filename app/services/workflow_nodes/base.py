@@ -248,11 +248,12 @@ def check_report_validation(report_text):
 
 
 def get_realtime_dashboard_data():
-    """Lấy dữ liệu crypto thời gian thực từ Redis với key 'latest_market_data'"""
+    """Lấy dữ liệu crypto thời gian thực từ Redis với key 'latest_market_data' và tự động giải phóng bộ nhớ"""
     max_retries = 3
     retry_delay = 2  # giây
     
     for attempt in range(max_retries):
+        r = None  # Initialize to ensure cleanup in finally block
         try:
             # Lấy dữ liệu từ Redis
             redis_url = os.getenv('REDIS_URL')
@@ -379,3 +380,11 @@ def get_realtime_dashboard_data():
         except Exception as e:
             print(f"Error getting cached crypto data from Redis: {e}")
             return None
+        finally:
+            # Đóng kết nối Redis để tránh memory leak
+            if r is not None:
+                try:
+                    r.close()
+                    print("🧹 Redis connection closed")
+                except Exception as e:
+                    print(f"Error closing Redis connection: {e}")
