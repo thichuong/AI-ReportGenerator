@@ -164,6 +164,13 @@ def schedule_auto_report(api_key, schedule_times=None):
                         consecutive_failures = 0  # Reset counter
                         continue
                     
+                    # Tạm nghỉ 30 phút trước khi thử lại
+                    retry_wait_minutes = 30
+                    print(f"[{datetime.now(vietnam_tz)}] ⏸️ Scheduler: Tạm nghỉ {retry_wait_minutes} phút trước khi thử lại...")
+                    time.sleep(retry_wait_minutes * 60)
+                    print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Tiếp tục thử lại sau {retry_wait_minutes} phút nghỉ...")
+                    continue  # Quay lại vòng lặp để thử tạo báo cáo lại
+                    
             except Exception as e:
                 consecutive_failures += 1
                 print(f"[{datetime.now(vietnam_tz)}] ❌ Scheduler error ({consecutive_failures}/{max_consecutive_failures}): {e}")
@@ -176,6 +183,13 @@ def schedule_auto_report(api_key, schedule_times=None):
                     print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Too many errors, waiting for next scheduled time...")
                     consecutive_failures = 0
                     continue
+                
+                # Tạm nghỉ 30 phút trước khi thử lại
+                retry_wait_minutes = 30
+                print(f"[{datetime.now(vietnam_tz)}] ⏸️ Scheduler: Tạm nghỉ {retry_wait_minutes} phút trước khi thử lại...")
+                time.sleep(retry_wait_minutes * 60)
+                print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Tiếp tục thử lại sau {retry_wait_minutes} phút nghỉ...")
+                continue  # Quay lại vòng lặp để thử tạo báo cáo lại
     
     # Tạo và khởi động thread cho scheduler
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
