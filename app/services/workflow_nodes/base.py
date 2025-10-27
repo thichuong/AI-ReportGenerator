@@ -248,7 +248,11 @@ def check_report_validation(report_text):
 
 
 def get_realtime_dashboard_data():
-    """Lấy dữ liệu crypto thời gian thực từ Redis với key 'latest_market_data' và tự động giải phóng bộ nhớ"""
+    """Lấy dữ liệu crypto thời gian thực từ Redis Streams và tự động giải phóng bộ nhớ
+    
+    Đọc dữ liệu từ Redis Stream 'market_data_stream' thay vì key 'latest_market_data'.
+    Stream được Rust backend nạp sẵn qua XADD command.
+    """
     max_retries = 3
     retry_delay = 2  # giây
     
@@ -262,124 +266,143 @@ def get_realtime_dashboard_data():
                 return None
                 
             r = redis.Redis.from_url(redis_url)
-            cached_data = r.get('latest_market_data')
             
-            if cached_data:
-                # Parse JSON data
-                try:
-                    full_data = json.loads(cached_data.decode('utf-8'))
+            # UPGRADED: Read from Redis Stream instead of simple key
+            # Use XREVRANGE to get the latest entry from 'market_data_stream'
+            stream_entries = r.xrevrange('market_data_stream', count=1)
+            
+            if stream_entries:
+                # stream_entries format: [(entry_id, {field: value, ...})]
+                entry_id, fields_dict = stream_entries[0]
+                
+                print(f"📥 [Python] Retrieved latest entry from Redis Stream (ID: {entry_id.decode('utf-8')})")
+                
+                # Convert Redis bytes to strings and parse nested JSON
+                crypto_data = {}
+                
+                for field_name, field_value in fields_dict.items():
+                    field_name_str = field_name.decode('utf-8') if isinstance(field_name, bytes) else field_name
+                    field_value_str = field_value.decode('utf-8') if isinstance(field_value, bytes) else field_value
                     
-                    # Lấy dữ liệu crypto đầy đủ hơn
-                    crypto_data = {}
-                    
-                    # Mapping các trường crypto - Mở rộng để lấy nhiều chỉ số hơn
-                    field_mappings = {
-                        # BTC metrics
-                        'btc_price': ['btc_price', 'btc_price_usd', 'btc', 'bitcoin'],
-                        'btc_change_24h': ['btc_change_24h', 'btc_24h_change', 'bitcoin_change_24h'],
-                        'btc_rsi_14': ['btc_rsi_14', 'rsi_14', 'btc_rsi', 'rsi'],
-                        
-                        # ETH metrics
-                        'eth_price': ['eth_price', 'eth_price_usd', 'eth', 'ethereum'],
-                        'eth_change_24h': ['eth_change_24h', 'eth_24h_change', 'ethereum_change_24h'],
-                        
-                        # SOL metrics
-                        'sol_price': ['sol_price', 'sol_price_usd', 'sol', 'solana'],
-                        'sol_change_24h': ['sol_change_24h', 'sol_24h_change', 'solana_change_24h'],
-                        
-                        # XRP metrics
-                        'xrp_price': ['xrp_price', 'xrp_price_usd', 'xrp'],
-                        'xrp_change_24h': ['xrp_change_24h', 'xrp_24h_change'],
-                        
-                        # ADA metrics
-                        'ada_price': ['ada_price', 'ada_price_usd', 'ada', 'cardano'],
-                        'ada_change_24h': ['ada_change_24h', 'ada_24h_change', 'cardano_change_24h'],
-                        
-                        # LINK metrics
-                        'link_price': ['link_price', 'link_price_usd', 'link', 'chainlink'],
-                        'link_change_24h': ['link_change_24h', 'link_24h_change', 'chainlink_change_24h'],
-                        
-                        # BNB metrics
-                        'bnb_price': ['bnb_price', 'bnb_price_usd', 'bnb', 'binance_coin'],
-                        'bnb_change_24h': ['bnb_change_24h', 'bnb_24h_change'],
-                        
-                        # Market metrics
-                        'market_cap': ['market_cap', 'market_cap_usd', 'total_market_cap'],
-                        'volume_24h': ['volume_24h', 'volume_24h_usd', 'total_volume_24h'],
-                        'market_cap_change_24h': ['market_cap_change_percentage_24h_usd', 'market_cap_change_24h', 'total_market_cap_change_24h'],
-                        
-                        # Dominance metrics
-                        'btc_dominance': ['btc_dominance', 'btc_market_cap_percentage', 'bitcoin_dominance'],
-                        'eth_dominance': ['eth_dominance', 'eth_market_cap_percentage', 'ethereum_dominance'],
-                        
-                        # Sentiment indicators
-                        'fear_greed_index': ['fear_greed_index', 'fng_value', 'fear_and_greed_index'],
-                        
-                        # Timestamp & source
-                        'timestamp': ['timestamp', 'last_updated', 'updated_at'],
-                        'source': ['source', 'data_source', 'normalized_by'],
-                    }
-                    
-                    # Tìm và extract từng trường
-                    for target_field, possible_keys in field_mappings.items():
-                        for key in possible_keys:
-                            if key in full_data:
-                                crypto_data[target_field] = full_data[key]
-                                break
-                    
-                    # Lấy thêm data_sources nếu có
-                    if 'data_sources' in full_data:
-                        crypto_data['data_sources'] = full_data['data_sources']
-                    
-                    # Lấy thêm partial_failure flag nếu có
-                    if 'partial_failure' in full_data:
-                        crypto_data['partial_failure'] = full_data['partial_failure']
-                    
-                    # Lấy thêm fetch_duration_ms nếu có
-                    if 'fetch_duration_ms' in full_data:
-                        crypto_data['fetch_duration_ms'] = full_data['fetch_duration_ms']
-                    
-                    # Thêm data_source
-                    crypto_data["data_source"] = "real_time"
-                    
-                    # In giá trị ra - Mở rộng để hiển thị nhiều chỉ số hơn
-                    print("=== CRYPTO DATA FROM REDIS ===")
-                    print(f"BTC Price: {crypto_data.get('btc_price', 'N/A')}")
-                    print(f"BTC Change 24h: {crypto_data.get('btc_change_24h', 'N/A')}%")
-                    print(f"BTC RSI 14: {crypto_data.get('btc_rsi_14', 'N/A')}")
-                    print(f"ETH Price: {crypto_data.get('eth_price', 'N/A')}")
-                    print(f"ETH Change 24h: {crypto_data.get('eth_change_24h', 'N/A')}%")
-                    print(f"SOL Price: {crypto_data.get('sol_price', 'N/A')}")
-                    print(f"XRP Price: {crypto_data.get('xrp_price', 'N/A')}")
-                    print(f"ADA Price: {crypto_data.get('ada_price', 'N/A')}")
-                    print(f"LINK Price: {crypto_data.get('link_price', 'N/A')}")
-                    print(f"BNB Price: {crypto_data.get('bnb_price', 'N/A')}")
-                    print(f"Market Cap: {crypto_data.get('market_cap', 'N/A')}")
-                    print(f"Market Cap Change 24h: {crypto_data.get('market_cap_change_24h', 'N/A')}%")
-                    print(f"Volume 24h: {crypto_data.get('volume_24h', 'N/A')}")
-                    print(f"BTC Dominance: {crypto_data.get('btc_dominance', 'N/A')}%")
-                    print(f"ETH Dominance: {crypto_data.get('eth_dominance', 'N/A')}%")
-                    print(f"Fear & Greed Index: {crypto_data.get('fear_greed_index', 'N/A')}")
-                    print(f"Timestamp: {crypto_data.get('timestamp', 'N/A')}")
-                    print("============================")
-                    
-                    print(f"Successfully retrieved crypto data from Redis on attempt {attempt + 1}: {len(crypto_data)} fields")
-                    return crypto_data
-                    
-                except json.JSONDecodeError as e:
-                    print(f"Error parsing cached market data: {e}")
-                    return None
+                    # Try to parse JSON values (for nested objects like us_stock_indices, data_sources)
+                    if field_value_str.startswith('{') or field_value_str.startswith('['):
+                        try:
+                            crypto_data[field_name_str] = json.loads(field_value_str)
+                        except json.JSONDecodeError:
+                            crypto_data[field_name_str] = field_value_str
+                    else:
+                        # Try to convert to number if possible
+                        try:
+                            # Try float first
+                            if '.' in field_value_str:
+                                crypto_data[field_name_str] = float(field_value_str)
+                            else:
+                                crypto_data[field_name_str] = int(field_value_str)
+                        except (ValueError, TypeError):
+                            # Keep as string if not a number
+                            crypto_data[field_name_str] = field_value_str
+                
+                # Add metadata
+                crypto_data["data_source"] = "redis_stream"
+                crypto_data["stream_entry_id"] = entry_id.decode('utf-8') if isinstance(entry_id, bytes) else entry_id
+                
+                # In giá trị ra - Mở rộng để hiển thị nhiều chỉ số hơn
+                print("=== CRYPTO DATA FROM REDIS STREAM ===")
+                print(f"Entry ID: {crypto_data.get('stream_entry_id', 'N/A')}")
+                print(f"BTC Price: {crypto_data.get('btc_price_usd', 'N/A')}")
+                print(f"BTC Change 24h: {crypto_data.get('btc_change_24h', 'N/A')}%")
+                print(f"BTC RSI 14: {crypto_data.get('btc_rsi_14', 'N/A')}")
+                print(f"ETH Price: {crypto_data.get('eth_price_usd', 'N/A')}")
+                print(f"ETH Change 24h: {crypto_data.get('eth_change_24h', 'N/A')}%")
+                print(f"SOL Price: {crypto_data.get('sol_price_usd', 'N/A')}")
+                print(f"XRP Price: {crypto_data.get('xrp_price_usd', 'N/A')}")
+                print(f"ADA Price: {crypto_data.get('ada_price_usd', 'N/A')}")
+                print(f"LINK Price: {crypto_data.get('link_price_usd', 'N/A')}")
+                print(f"BNB Price: {crypto_data.get('bnb_price_usd', 'N/A')}")
+                print(f"Market Cap: {crypto_data.get('market_cap_usd', 'N/A')}")
+                print(f"Market Cap Change 24h: {crypto_data.get('market_cap_change_percentage_24h_usd', 'N/A')}%")
+                print(f"Volume 24h: {crypto_data.get('volume_24h_usd', 'N/A')}")
+                print(f"BTC Dominance: {crypto_data.get('btc_market_cap_percentage', 'N/A')}%")
+                print(f"ETH Dominance: {crypto_data.get('eth_market_cap_percentage', 'N/A')}%")
+                print(f"Fear & Greed Index: {crypto_data.get('fng_value', crypto_data.get('fear_greed_index', 'N/A'))}")
+                print(f"Timestamp: {crypto_data.get('timestamp', 'N/A')}")
+                print(f"Stream Timestamp: {crypto_data.get('stream_timestamp', 'N/A')}")
+                print(f"US Stock Indices: {len(crypto_data.get('us_stock_indices', {})) if isinstance(crypto_data.get('us_stock_indices'), dict) else 'N/A'} indices")
+                print("====================================")
+                
+                print(f"✅ Successfully retrieved crypto data from Redis Stream on attempt {attempt + 1}: {len(crypto_data)} fields")
+                return crypto_data
             else:
+                # Fallback: Try reading from old 'latest_market_data' key for backward compatibility
+                print(f"⚠️ No entries in Redis Stream 'market_data_stream' (attempt {attempt + 1}), trying fallback to 'latest_market_data' key...")
+                
+                cached_data = r.get('latest_market_data')
+                if cached_data:
+                    try:
+                        full_data = json.loads(cached_data.decode('utf-8'))
+                        
+                        # Extract crypto data using same field mappings as before
+                        crypto_data = {}
+                        field_mappings = {
+                            'btc_price': ['btc_price', 'btc_price_usd', 'btc', 'bitcoin'],
+                            'btc_change_24h': ['btc_change_24h', 'btc_24h_change', 'bitcoin_change_24h'],
+                            'btc_rsi_14': ['btc_rsi_14', 'rsi_14', 'btc_rsi', 'rsi'],
+                            'eth_price': ['eth_price', 'eth_price_usd', 'eth', 'ethereum'],
+                            'eth_change_24h': ['eth_change_24h', 'eth_24h_change', 'ethereum_change_24h'],
+                            'sol_price': ['sol_price', 'sol_price_usd', 'sol', 'solana'],
+                            'sol_change_24h': ['sol_change_24h', 'sol_24h_change', 'solana_change_24h'],
+                            'xrp_price': ['xrp_price', 'xrp_price_usd', 'xrp'],
+                            'xrp_change_24h': ['xrp_change_24h', 'xrp_24h_change'],
+                            'ada_price': ['ada_price', 'ada_price_usd', 'ada', 'cardano'],
+                            'ada_change_24h': ['ada_change_24h', 'ada_24h_change', 'cardano_change_24h'],
+                            'link_price': ['link_price', 'link_price_usd', 'link', 'chainlink'],
+                            'link_change_24h': ['link_change_24h', 'link_24h_change', 'chainlink_change_24h'],
+                            'bnb_price': ['bnb_price', 'bnb_price_usd', 'bnb', 'binance_coin'],
+                            'bnb_change_24h': ['bnb_change_24h', 'bnb_24h_change'],
+                            'market_cap': ['market_cap', 'market_cap_usd', 'total_market_cap'],
+                            'volume_24h': ['volume_24h', 'volume_24h_usd', 'total_volume_24h'],
+                            'market_cap_change_24h': ['market_cap_change_percentage_24h_usd', 'market_cap_change_24h', 'total_market_cap_change_24h'],
+                            'btc_dominance': ['btc_dominance', 'btc_market_cap_percentage', 'bitcoin_dominance'],
+                            'eth_dominance': ['eth_dominance', 'eth_market_cap_percentage', 'ethereum_dominance'],
+                            'fear_greed_index': ['fear_greed_index', 'fng_value', 'fear_and_greed_index'],
+                            'timestamp': ['timestamp', 'last_updated', 'updated_at'],
+                            'source': ['source', 'data_source', 'normalized_by'],
+                        }
+                        
+                        for target_field, possible_keys in field_mappings.items():
+                            for key in possible_keys:
+                                if key in full_data:
+                                    crypto_data[target_field] = full_data[key]
+                                    break
+                        
+                        if 'data_sources' in full_data:
+                            crypto_data['data_sources'] = full_data['data_sources']
+                        if 'partial_failure' in full_data:
+                            crypto_data['partial_failure'] = full_data['partial_failure']
+                        if 'fetch_duration_ms' in full_data:
+                            crypto_data['fetch_duration_ms'] = full_data['fetch_duration_ms']
+                        
+                        crypto_data["data_source"] = "fallback_key"
+                        
+                        print("✅ Retrieved data from fallback 'latest_market_data' key")
+                        return crypto_data
+                    except json.JSONDecodeError as e:
+                        print(f"Error parsing cached market data: {e}")
+                
                 if attempt < max_retries - 1:
-                    print(f"No cached market data found in Redis (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay} seconds...")
+                    print(f"No data found in Redis Stream or fallback key (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay} seconds...")
                     asyncio.run(asyncio.sleep(retry_delay))
                 else:
-                    print(f"No cached market data found in Redis after {max_retries} attempts")
+                    print(f"No market data found after {max_retries} attempts")
                     return None
                     
         except Exception as e:
-            print(f"Error getting cached crypto data from Redis: {e}")
-            return None
+            print(f"Error getting crypto data from Redis Stream: {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                asyncio.run(asyncio.sleep(retry_delay))
+            else:
+                return None
         finally:
             # Đóng kết nối Redis để tránh memory leak
             if r is not None:
