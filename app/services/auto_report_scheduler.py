@@ -84,14 +84,24 @@ def schedule_auto_report(api_key, schedule_times=None):
     def run_scheduler():
         consecutive_failures = 0
         max_consecutive_failures = 3
+        retry_run_time = None  # Biến lưu thời gian retry sau 30p
         
         print(f"[{datetime.now(vietnam_tz)}] 🎯 Auto report scheduler khởi động với khung giờ: {', '.join(schedule_times)} (GMT+7)")
         
         while True:
             try:
                 # Tính toán thời gian chạy tiếp theo
-                next_run = get_next_run_time()
                 now = datetime.now(vietnam_tz)
+                scheduled_next_run = get_next_run_time()
+                
+                # So sánh retry_run_time (30p) và scheduled_next_run, chọn cái nào sớm hơn
+                if retry_run_time is not None:
+                    next_run = min(retry_run_time, scheduled_next_run)
+                    if next_run == retry_run_time:
+                        print(f"[{now}] 🔄 Sử dụng retry time (30p) thay vì scheduled time")
+                else:
+                    next_run = scheduled_next_run
+                
                 wait_seconds = (next_run - now).total_seconds()
                 
                 if wait_seconds > 0:
@@ -102,20 +112,30 @@ def schedule_auto_report(api_key, schedule_times=None):
                 now = datetime.now(vietnam_tz)
                 current_time = now.strftime("%H:%M")
                 
-                # Kiểm tra xem có đúng khung giờ không (với tolerance 5 phút)
-                should_run = False
-                for time_str in schedule_times:
-                    scheduled_hour, scheduled_minute = map(int, time_str.split(':'))
-                    scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0)
-                    time_diff = abs((now - scheduled_time).total_seconds())
-                    
-                    if time_diff <= 300:  # Tolerance 5 phút
-                        should_run = True
-                        break
+                # Nếu đang retry (có retry_run_time), không cần check khung giờ
+                is_retry = (retry_run_time is not None and abs((now - retry_run_time).total_seconds()) <= 300)
                 
-                if not should_run:
-                    print(f"[{now}] ⚠️ Scheduler: Không đúng khung giờ, skip...")
-                    continue
+                if not is_retry:
+                    # Kiểm tra xem có đúng khung giờ không (với tolerance 5 phút)
+                    should_run = False
+                    for time_str in schedule_times:
+                        scheduled_hour, scheduled_minute = map(int, time_str.split(':'))
+                        scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0)
+                        time_diff = abs((now - scheduled_time).total_seconds())
+                        
+                        if time_diff <= 300:  # Tolerance 5 phút
+                            should_run = True
+                            break
+                    
+                    if not should_run:
+                        print(f"[{now}] ⚠️ Scheduler: Không đúng khung giờ, skip...")
+                        retry_run_time = None  # Reset retry time nếu skip
+                        continue
+                else:
+                    print(f"[{now}] 🔄 Scheduler: Retry run - skipping schedule check")
+                
+                # Reset retry_run_time trước khi chạy báo cáo
+                retry_run_time = None
                 
                 print(f"[{now}] 🚀 Scheduler: Bắt đầu tạo báo cáo tự động (khung {current_time})...")
                 start_time = datetime.now(vietnam_tz)
@@ -126,6 +146,7 @@ def schedule_auto_report(api_key, schedule_times=None):
                 
                 if isinstance(result, dict) and result.get('success'):
                     consecutive_failures = 0  # Reset failure counter
+                    retry_run_time = None  # Reset retry time khi thành công
                     end_time = datetime.now(vietnam_tz)
                     duration = (end_time - start_time).total_seconds()
                     report_id = result.get('report_id')
@@ -137,7 +158,8 @@ def schedule_auto_report(api_key, schedule_times=None):
                     print(f"[{datetime.now(vietnam_tz)}] 🧹 Memory cleanup completed")
                     
                 elif isinstance(result, bool) and result:
-                    consecutive_failures = 0  # Reset failure counter  
+                    consecutive_failures = 0  # Reset failure counter
+                    retry_run_time = None  # Reset retry time khi thành công
                     end_time = datetime.now(vietnam_tz)
                     duration = (end_time - start_time).total_seconds()
                     print(f"[{end_time}] ✅ Scheduler: Báo cáo tạo thành công trong {duration:.1f}s (khung {current_time})")
@@ -162,14 +184,14 @@ def schedule_auto_report(api_key, schedule_times=None):
                     if consecutive_failures >= max_consecutive_failures:
                         print(f"[{datetime.now(vietnam_tz)}] ⚠️ Scheduler: Too many failures, skipping to next scheduled time...")
                         consecutive_failures = 0  # Reset counter
+                        retry_run_time = None  # Reset retry time
                         continue
                     
-                    # Tạm nghỉ 30 phút trước khi thử lại
+                    # Thiết lập retry time là 30 phút từ bây giờ
                     retry_wait_minutes = 30
-                    print(f"[{datetime.now(vietnam_tz)}] ⏸️ Scheduler: Tạm nghỉ {retry_wait_minutes} phút trước khi thử lại...")
-                    time.sleep(retry_wait_minutes * 60)
-                    print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Tiếp tục thử lại sau {retry_wait_minutes} phút nghỉ...")
-                    continue  # Quay lại vòng lặp để thử tạo báo cáo lại
+                    retry_run_time = datetime.now(vietnam_tz) + timedelta(minutes=retry_wait_minutes)
+                    print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Đặt retry time sau {retry_wait_minutes} phút vào {retry_run_time.strftime('%H:%M:%S')}")
+                    continue  # Quay lại vòng lặp để tính toán next_run mới
                     
             except Exception as e:
                 consecutive_failures += 1
@@ -182,14 +204,14 @@ def schedule_auto_report(api_key, schedule_times=None):
                 if consecutive_failures >= max_consecutive_failures:
                     print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Too many errors, waiting for next scheduled time...")
                     consecutive_failures = 0
+                    retry_run_time = None  # Reset retry time
                     continue
                 
-                # Tạm nghỉ 30 phút trước khi thử lại
+                # Thiết lập retry time là 30 phút từ bây giờ
                 retry_wait_minutes = 30
-                print(f"[{datetime.now(vietnam_tz)}] ⏸️ Scheduler: Tạm nghỉ {retry_wait_minutes} phút trước khi thử lại...")
-                time.sleep(retry_wait_minutes * 60)
-                print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Tiếp tục thử lại sau {retry_wait_minutes} phút nghỉ...")
-                continue  # Quay lại vòng lặp để thử tạo báo cáo lại
+                retry_run_time = datetime.now(vietnam_tz) + timedelta(minutes=retry_wait_minutes)
+                print(f"[{datetime.now(vietnam_tz)}] 🔄 Scheduler: Đặt retry time sau {retry_wait_minutes} phút vào {retry_run_time.strftime('%H:%M:%S')}")
+                continue  # Quay lại vòng lặp để tính toán next_run mới
     
     # Tạo và khởi động thread cho scheduler
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
