@@ -2,6 +2,8 @@
 Điểm khởi chạy ứng dụng FastAPI
 """
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from app.routers import articles, reports, market
 from app.db.session import create_tables
@@ -10,6 +12,7 @@ from app.utils.prompt_env_loader import load_prompt_envs
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import asyncio
+import os
 
 # Load environment variables
 load_dotenv()
@@ -67,10 +70,14 @@ app.include_router(articles.router, prefix="/api/v1", tags=["articles"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 app.include_router(market.router, prefix="/api/v1", tags=["market"])
 
+# Mount static files
+static_path = os.path.join(os.path.dirname(__file__), "app", "static")
+app.mount("/static", StaticFiles(directory=static_path), name="static")
+
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {"message": "Welcome to AI Report Generator API"}
+    """Root endpoint - serve homepage"""
+    return FileResponse(os.path.join(static_path, "index.html"))
 
 @app.get("/health")
 async def health_check():

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Report Generator - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-secondary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-info:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .result-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .result-container h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .progress-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .progress-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .success {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .error {
+            color: #dc3545;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Report Generator</h1>
+            <p class="subtitle">Dashboard quản lý và tạo báo cáo đầu tư tự động</p>
+        </header>
+
+        <div class="grid">
+            <!-- Check API Key -->
+            <div class="card">
+                <h3>🔑 Kiểm tra API Key</h3>
+                <p>Xem thông tin cấu hình API key của hệ thống</p>
+                <button class="btn-info" onclick="checkApiKey()">Kiểm tra</button>
+            </div>
+
+            <!-- Scheduler Status -->
+            <div class="card">
+                <h3>⏰ Trạng thái Scheduler</h3>
+                <p>Kiểm tra cấu hình auto report scheduler</p>
+                <button class="btn-info" onclick="getSchedulerStatus()">Xem trạng thái</button>
+            </div>
+
+            <!-- Generate Auto Report -->
+            <div class="card">
+                <h3>🚀 Tạo báo cáo tự động</h3>
+                <p>Tạo báo cáo với AI workflow (background task, theo dõi tiến độ)</p>
+                <button class="btn-primary" onclick="generateAutoReport()">Bắt đầu</button>
+            </div>
+
+            <!-- Manual Generate -->
+            <div class="card">
+                <h3>✍️ Tạo báo cáo thủ công</h3>
+                <p>Tạo báo cáo ngay lập tức (không dùng background task)</p>
+                <button class="btn-secondary" onclick="generateManualReport()">Tạo ngay</button>
+            </div>
+
+            <!-- Get Progress -->
+            <div class="card">
+                <h3>📊 Theo dõi tiến độ</h3>
+                <p>Xem tiến độ tạo báo cáo theo session ID</p>
+                <div class="progress-input">
+                    <input type="text" id="sessionId" placeholder="Nhập session ID">
+                    <button class="btn-info" onclick="getProgress()" style="width: auto; padding: 10px 20px;">Xem</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: white; font-weight: 600;">Đang xử lý...</p>
+        </div>
+
+        <div class="result-container" id="resultContainer" style="display: none;">
+            <h3>📋 Kết quả</h3>
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResult(data, isError = false) {
+            hideLoading();
+            const container = document.getElementById('resultContainer');
+            const result = document.getElementById('result');
+            container.style.display = 'block';
+
+            if (isError) {
+                result.innerHTML = `<span class="error">❌ Lỗi:</span>\n${JSON.stringify(data, null, 2)}`;
+            } else {
+                result.innerHTML = `<span class="success">✅ Thành công:</span>\n${JSON.stringify(data, null, 2)}`;
+            }
+        }
+
+        async function checkApiKey() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE}/check-api-key`);
+                const data = await response.json();
+                showResult(data);
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+
+        async function getSchedulerStatus() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE}/scheduler/status`);
+                const data = await response.json();
+                showResult(data);
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+
+        async function generateAutoReport() {
+            if (!confirm('Bạn có chắc muốn tạo báo cáo tự động? Quá trình này sẽ chạy trong background.')) {
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE}/generate-auto-report`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+
+                if (data.session_id) {
+                    document.getElementById('sessionId').value = data.session_id;
+                }
+
+                showResult(data, !data.success);
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+
+        async function generateManualReport() {
+            if (!confirm('Bạn có chắc muốn tạo báo cáo thủ công? Quá trình này có thể mất vài phút.')) {
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE}/manual-generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                showResult(data, !data.success);
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+
+        async function getProgress() {
+            const sessionId = document.getElementById('sessionId').value.trim();
+
+            if (!sessionId) {
+                alert('Vui lòng nhập session ID');
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE}/progress/${sessionId}`);
+                const data = await response.json();
+                showResult(data, response.status !== 200);
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>
