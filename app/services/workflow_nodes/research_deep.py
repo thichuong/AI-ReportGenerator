@@ -1,10 +1,9 @@
 """
 Node thực hiện nghiên cứu sâu + validation
 """
-import time
 import json
 from google.genai import types
-from .base import ReportState, check_report_validation
+from .base import ReportState, check_report_validation, call_gemini_with_rate_limit_handling
 from ...services.progress_tracker import progress_tracker
 
 
@@ -66,31 +65,33 @@ def research_deep_node(state: ReportState) -> ReportState:
         
         # Gọi API 3 lần để có 3 response khác nhau (do model không hỗ trợ multiple candidates)
         all_responses = []
-        
+
         for call_attempt in range(3):
             progress_tracker.update_step(session_id, details=f"Gọi Combined AI API lần {call_attempt + 1}/3...")
-            
-            # Retry cho mỗi API call
-            response = None
-            for api_attempt in range(3):
-                try:
-                    response = state["client"].models.generate_content(
-                        model=state["model"],
-                        contents=contents,
-                        config=generate_content_config
-                    )
-                    break
-                except Exception as api_error:
-                    if api_attempt < 2:
-                        wait_time = (api_attempt + 1) * 30
-                        progress_tracker.update_step(session_id, details=f"Lỗi API call {call_attempt + 1}, retry {api_attempt + 1}, chờ {wait_time}s... ({api_error})")
-                        time.sleep(wait_time)
-                    else:
-                        # Nếu hết retry cho call này, log error nhưng tiếp tục với call tiếp theo
-                        progress_tracker.update_step(session_id, details=f"Lỗi API call {call_attempt + 1} sau 3 lần thử: {api_error}")
-                        response = None
-                        break
-            
+
+            # Use centralized error handler
+            response, error_msg, is_rate_limit = call_gemini_with_rate_limit_handling(
+                client=state["client"],
+                model=state["model"],
+                contents=contents,
+                config=generate_content_config,
+                session_id=session_id,
+                operation_name=f"research_deep_call_{call_attempt + 1}",
+                max_retries=3
+            )
+
+            # Check for rate limit error - stop immediately
+            if is_rate_limit:
+                state["error_messages"].append(error_msg)
+                progress_tracker.update_step(session_id, details=f"🚫 Rate limit error - dừng workflow ngay lập tức")
+                state["success"] = False
+                return state
+
+            # Check for other errors after retries
+            if error_msg:
+                progress_tracker.update_step(session_id, details=f"Lỗi API call {call_attempt + 1} sau 3 lần thử: {error_msg}")
+                response = None
+
             # Kiểm tra và lưu response
             if response and hasattr(response, 'text') and response.text:
                 all_responses.append(f"=== RESPONSE {call_attempt + 1} ===\n{response.text}\n")

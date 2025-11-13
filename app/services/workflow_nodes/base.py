@@ -404,3 +404,89 @@ def get_realtime_dashboard_data():
                     print("🧹 Redis connection closed")
                 except Exception as e:
                     print(f"Error closing Redis connection: {e}")
+
+
+def call_gemini_with_rate_limit_handling(
+    client,
+    model,
+    contents,
+    config,
+    session_id,
+    operation_name,
+    max_retries=3
+):
+    """
+    Wrapper for Gemini API calls with 429 rate limit detection and immediate stop.
+
+    When a rate limit error (429 or quota_limit_value: '0') is detected:
+    - Stops immediately without retry
+    - Returns error with is_rate_limit_error=True flag
+
+    For other errors:
+    - Waits 30 seconds before each retry
+    - Retries up to max_retries times
+
+    Args:
+        client: Gemini client instance
+        model: Model name
+        contents: Contents to send to API
+        config: Generation config
+        session_id: Session ID for logging
+        operation_name: Name of operation for logging (e.g., "research_deep", "generate_report")
+        max_retries: Maximum number of retries for non-rate-limit errors (default: 3)
+
+    Returns:
+        tuple: (response, error_message, is_rate_limit_error)
+            - response: API response if successful, None otherwise
+            - error_message: Error message if failed, None otherwise
+            - is_rate_limit_error: True if rate limit error (429/quota), False otherwise
+    """
+    import time
+
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config
+            )
+            # Success
+            print(f"✅ [{session_id}] {operation_name} completed successfully on attempt {attempt + 1}")
+            return (response, None, False)
+
+        except Exception as e:
+            error_str = str(e).lower()
+            original_error = str(e)  # Keep original case for quota check
+
+            # Detect rate limit errors (429 or quota_limit_value: '0')
+            is_rate_limit = (
+                '429' in error_str or
+                "quota_limit_value: '0'" in original_error or  # Case-sensitive check
+                'rate limit' in error_str or
+                'resource exhausted' in error_str or
+                'quota exceeded' in error_str or
+                'resourceexhausted' in error_str
+            )
+
+            if is_rate_limit:
+                # Rate limit detected - stop immediately, no retry
+                error_msg = f"[{session_id}] Rate limit error detected in {operation_name}: {original_error}"
+                print(f"🚫 {error_msg}")
+                print(f"⛔ Stopping workflow immediately - no retry for rate limit errors")
+                return (None, error_msg, True)
+
+            # Other errors - retry with 30s delay
+            if attempt < max_retries - 1:
+                wait_time = 30  # Fixed 30s delay for all retries
+                error_msg = f"[{session_id}] Error in {operation_name} (attempt {attempt + 1}/{max_retries}): {original_error}"
+                print(f"⚠️ {error_msg}")
+                print(f"⏳ Waiting {wait_time} seconds before retry...")
+                time.sleep(wait_time)
+            else:
+                # Final attempt failed
+                error_msg = f"[{session_id}] {operation_name} failed after {max_retries} attempts: {original_error}"
+                print(f"❌ {error_msg}")
+                return (None, error_msg, False)
+
+    # Should not reach here, but just in case
+    return (None, f"Unexpected error in {operation_name}", False)

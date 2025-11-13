@@ -1,9 +1,8 @@
 # app/services/workflow_nodes/translate_content.py
 
-import time
 from typing import Dict, Any
 from google.genai import types
-from .base import ReportState, read_prompt_file, get_prompt_from_env
+from .base import ReportState, read_prompt_file, get_prompt_from_env, call_gemini_with_rate_limit_handling
 from ...services.progress_tracker import progress_tracker
 
 
@@ -152,58 +151,54 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
         candidate_count=1,
     )
     
-    # Retry logic giống như các node khác
-    for attempt in range(3):
-        try:
-            progress_tracker.update_step(session_id, details=f"Gọi AI dịch {content_type} (lần {attempt + 1}/3)...")
-            response = client.models.generate_content(
-                model=model,
-                contents=contents,
-                config=config
-            )
-            
-            if response and hasattr(response, 'text') and response.text:
-                # Làm sạch response text
-                translated_content = response.text.strip()
-                
-                # Loại bỏ markdown code blocks nếu có
-                if translated_content.startswith('```'):
-                    lines = translated_content.split('\n')
-                    if len(lines) > 2:
-                        # Bỏ dòng đầu và cuối (markdown markers)
-                        translated_content = '\n'.join(lines[1:-1])
-                
-                # Kiểm tra nếu nội dung có thực sự có ý nghĩa
-                if translated_content and len(translated_content.strip()) > 0:
-                    result = translated_content
-                    # 🧹 Cleanup response object trước khi return
-                    del response
-                    del translated_content
-                    return result
-                else:
-                    print(f"WARNING: AI trả về nội dung rỗng cho {content_type}, thử lại...")
-                    # 🧹 Cleanup trước khi retry
-                    del response
-                    del translated_content
-                    if attempt < 2:
-                        continue  # Thử lại trong vòng lặp
-                    else:
-                        return None
-            else:
-                print(f"WARNING: AI không trả về nội dung cho {content_type}, thử lại...")
-                if attempt < 2:
-                    continue  # Thử lại trong vòng lặp
-                else:
-                    return None
-                
-        except Exception as e:
-            if attempt < 2:
-                wait_time = (attempt + 1) * 10
-                progress_tracker.update_step(session_id, details=f"Lỗi dịch {content_type}, chờ {wait_time}s...")
-                print(f"WARNING: Lỗi dịch {content_type} (lần {attempt + 1}), thử lại sau {wait_time}s: {e}")
-                time.sleep(wait_time)
-            else:
-                print(f"ERROR: Không thể dịch {content_type} sau 3 lần thử: {e}")
-                return None
-    
-    return None
+    # Call API with centralized error handler
+    progress_tracker.update_step(session_id, details=f"Gọi AI dịch {content_type}...")
+    response, error_msg, is_rate_limit = call_gemini_with_rate_limit_handling(
+        client=client,
+        model=model,
+        contents=contents,
+        config=config,
+        session_id=session_id,
+        operation_name=f"translate_{content_type}",
+        max_retries=3
+    )
+
+    # Check for rate limit error - return None (translation is optional, workflow continues)
+    if is_rate_limit:
+        print(f"🚫 Rate limit error while translating {content_type} - skipping translation")
+        progress_tracker.update_step(session_id, details=f"🚫 Rate limit - bỏ qua dịch {content_type}")
+        return None
+
+    # Check for other errors after retries
+    if error_msg:
+        print(f"ERROR: Không thể dịch {content_type} sau 3 lần thử: {error_msg}")
+        progress_tracker.update_step(session_id, details=f"⚠️ Lỗi dịch {content_type}")
+        return None
+
+    # Process successful response
+    if response and hasattr(response, 'text') and response.text:
+        # Làm sạch response text
+        translated_content = response.text.strip()
+
+        # Loại bỏ markdown code blocks nếu có
+        if translated_content.startswith('```'):
+            lines = translated_content.split('\n')
+            if len(lines) > 2:
+                # Bỏ dòng đầu và cuối (markdown markers)
+                translated_content = '\n'.join(lines[1:-1])
+
+        # Kiểm tra nếu nội dung có thực sự có ý nghĩa
+        if translated_content and len(translated_content.strip()) > 0:
+            result = translated_content
+            # 🧹 Cleanup response object trước khi return
+            del response
+            del translated_content
+            return result
+        else:
+            print(f"WARNING: AI trả về nội dung rỗng cho {content_type}")
+            del response
+            del translated_content
+            return None
+    else:
+        print(f"WARNING: AI không trả về nội dung cho {content_type}")
+        return None

@@ -1,10 +1,9 @@
 """
 Node tạo giao diện theo từng thành phần riêng biệt (HTML, JS, CSS)
 """
-import time
 import re
 from google.genai import types
-from .base import ReportState, read_prompt_file, get_prompt_from_env
+from .base import ReportState, read_prompt_file, get_prompt_from_env, call_gemini_with_rate_limit_handling
 from ...services.progress_tracker import progress_tracker
 
 
@@ -47,27 +46,31 @@ def create_html_node(state: ReportState) -> ReportState:
         candidate_count=1,
     )
     
-    # Retry cho HTML generation
-    for html_attempt in range(3):
-        try:
-            progress_tracker.update_step(session_id, details=f"Gọi AI tạo HTML (lần {html_attempt + 1}/3)...")
-            html_response = state["client"].models.generate_content(
-                model=state["model"],
-                contents=html_contents,
-                config=simple_config
-            )
-            break
-        except Exception as html_error:
-            if html_attempt < 2:
-                wait_time = (html_attempt + 1) * 20
-                progress_tracker.update_step(session_id, details=f"Lỗi tạo HTML, chờ {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                error_msg = f"Không thể tạo HTML sau 3 lần thử: {str(html_error)}"
-                state["error_messages"].append(error_msg)
-                state["success"] = False
-                progress_tracker.error_progress(session_id, error_msg)
-                return state
+    # Call API with centralized error handler
+    progress_tracker.update_step(session_id, details="Gọi AI tạo HTML...")
+    html_response, error_msg, is_rate_limit = call_gemini_with_rate_limit_handling(
+        client=state["client"],
+        model=state["model"],
+        contents=html_contents,
+        config=simple_config,
+        session_id=session_id,
+        operation_name="create_html",
+        max_retries=3
+    )
+
+    # Check for rate limit error - stop immediately
+    if is_rate_limit:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, "🚫 Rate limit error - dừng workflow ngay lập tức")
+        return state
+
+    # Check for other errors after retries
+    if error_msg:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, error_msg)
+        return state
     
     # Kiểm tra HTML response
     if not html_response or not hasattr(html_response, 'text') or not html_response.text:
@@ -131,27 +134,31 @@ def create_javascript_node(state: ReportState) -> ReportState:
         candidate_count=1,
     )
     
-    # Retry cho JS generation
-    for js_attempt in range(3):
-        try:
-            progress_tracker.update_step(session_id, details=f"Gọi AI tạo JavaScript (lần {js_attempt + 1}/3)...")
-            js_response = state["client"].models.generate_content(
-                model=state["model"],
-                contents=js_contents,
-                config=simple_config
-            )
-            break
-        except Exception as js_error:
-            if js_attempt < 2:
-                wait_time = (js_attempt + 1) * 20
-                progress_tracker.update_step(session_id, details=f"Lỗi tạo JavaScript, chờ {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                error_msg = f"Không thể tạo JavaScript sau 3 lần thử: {str(js_error)}"
-                state["error_messages"].append(error_msg)
-                state["success"] = False
-                progress_tracker.error_progress(session_id, error_msg)
-                return state
+    # Call API with centralized error handler
+    progress_tracker.update_step(session_id, details="Gọi AI tạo JavaScript...")
+    js_response, error_msg, is_rate_limit = call_gemini_with_rate_limit_handling(
+        client=state["client"],
+        model=state["model"],
+        contents=js_contents,
+        config=simple_config,
+        session_id=session_id,
+        operation_name="create_javascript",
+        max_retries=3
+    )
+
+    # Check for rate limit error - stop immediately
+    if is_rate_limit:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, "🚫 Rate limit error - dừng workflow ngay lập tức")
+        return state
+
+    # Check for other errors after retries
+    if error_msg:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, error_msg)
+        return state
     
     # Kiểm tra JS response
     if not js_response or not hasattr(js_response, 'text') or not js_response.text:
@@ -211,27 +218,31 @@ def create_css_node(state: ReportState) -> ReportState:
         candidate_count=1,
     )
     
-    # Retry cho CSS generation
-    for css_attempt in range(3):
-        try:
-            progress_tracker.update_step(session_id, details=f"Gọi AI tạo CSS (lần {css_attempt + 1}/3)...")
-            css_response = state["client"].models.generate_content(
-                model=state["model"],
-                contents=css_contents,
-                config=simple_config
-            )
-            break
-        except Exception as css_error:
-            if css_attempt < 2:
-                wait_time = (css_attempt + 1) * 20
-                progress_tracker.update_step(session_id, details=f"Lỗi tạo CSS, chờ {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                error_msg = f"Không thể tạo CSS sau 3 lần thử: {str(css_error)}"
-                state["error_messages"].append(error_msg)
-                state["success"] = False
-                progress_tracker.error_progress(session_id, error_msg)
-                return state
+    # Call API with centralized error handler
+    progress_tracker.update_step(session_id, details="Gọi AI tạo CSS...")
+    css_response, error_msg, is_rate_limit = call_gemini_with_rate_limit_handling(
+        client=state["client"],
+        model=state["model"],
+        contents=css_contents,
+        config=simple_config,
+        session_id=session_id,
+        operation_name="create_css",
+        max_retries=3
+    )
+
+    # Check for rate limit error - stop immediately
+    if is_rate_limit:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, "🚫 Rate limit error - dừng workflow ngay lập tức")
+        return state
+
+    # Check for other errors after retries
+    if error_msg:
+        state["error_messages"].append(error_msg)
+        state["success"] = False
+        progress_tracker.error_progress(session_id, error_msg)
+        return state
     
     # Kiểm tra CSS response
     if not css_response or not hasattr(css_response, 'text') or not css_response.text:
