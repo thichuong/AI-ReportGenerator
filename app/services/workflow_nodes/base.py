@@ -270,38 +270,31 @@ def get_realtime_dashboard_data():
             # UPGRADED: Read from Redis Stream instead of simple key
             # Use XREVRANGE to get the latest entry from 'market_data_stream'
             stream_entries = r.xrevrange('market_data_stream', count=1)
-            
+
             if stream_entries:
                 # stream_entries format: [(entry_id, {field: value, ...})]
                 entry_id, fields_dict = stream_entries[0]
-                
+
                 print(f"📥 [Python] Retrieved latest entry from Redis Stream (ID: {entry_id.decode('utf-8')})")
-                
-                # Convert Redis bytes to strings and parse nested JSON
-                crypto_data = {}
-                
-                for field_name, field_value in fields_dict.items():
-                    field_name_str = field_name.decode('utf-8') if isinstance(field_name, bytes) else field_name
-                    field_value_str = field_value.decode('utf-8') if isinstance(field_value, bytes) else field_value
-                    
-                    # Try to parse JSON values (for nested objects like us_stock_indices, data_sources)
-                    if field_value_str.startswith('{') or field_value_str.startswith('['):
-                        try:
-                            crypto_data[field_name_str] = json.loads(field_value_str)
-                        except json.JSONDecodeError:
-                            crypto_data[field_name_str] = field_value_str
-                    else:
-                        # Try to convert to number if possible
-                        try:
-                            # Try float first
-                            if '.' in field_value_str:
-                                crypto_data[field_name_str] = float(field_value_str)
-                            else:
-                                crypto_data[field_name_str] = int(field_value_str)
-                        except (ValueError, TypeError):
-                            # Keep as string if not a number
-                            crypto_data[field_name_str] = field_value_str
-                
+
+                # The stream has a single field named "data" containing the full JSON
+                data_field = fields_dict.get(b'data') or fields_dict.get('data')
+
+                if not data_field:
+                    print("⚠️ No 'data' field found in stream entry")
+                    print(f"Available fields: {list(fields_dict.keys())}")
+                    return None
+
+                # Decode and parse the JSON data
+                data_str = data_field.decode('utf-8') if isinstance(data_field, bytes) else data_field
+
+                try:
+                    crypto_data = json.loads(data_str)
+                except json.JSONDecodeError as e:
+                    print(f"❌ Error parsing JSON from 'data' field: {e}")
+                    print(f"Data preview: {data_str[:200]}...")
+                    return None
+
                 # Add metadata
                 crypto_data["data_source"] = "redis_stream"
                 crypto_data["stream_entry_id"] = entry_id.decode('utf-8') if isinstance(entry_id, bytes) else entry_id
