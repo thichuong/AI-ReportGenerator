@@ -30,13 +30,21 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
         if state.get("html_content"):
             print("Đang dịch HTML content...")
             progress_tracker.update_step(session_id, details="Đang dịch HTML content...")
-            translated_html = _translate_with_ai(
-                state["client"], 
-                state["model"], 
-                state["html_content"], 
+            translated_html, is_rate_limit_html = _translate_with_ai(
+                state["client"],
+                state["model"],
+                state["html_content"],
                 "html",
                 session_id
             )
+
+            # Check for rate limit error - STOP WORKFLOW IMMEDIATELY
+            if is_rate_limit_html:
+                state["success"] = False
+                state["error_messages"].append("Rate limit error khi dịch HTML - dừng workflow")
+                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch HTML - dừng workflow ngay lập tức")
+                return state
+
             if translated_html:
                 print("✓ HTML content đã được dịch thành công")
                 progress_tracker.update_step(session_id, details=f"✓ HTML đã dịch - {len(translated_html)} chars")
@@ -47,13 +55,21 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
         if state.get("js_content"):
             print("Đang dịch JavaScript content...")
             progress_tracker.update_step(session_id, details="Đang dịch JavaScript content...")
-            translated_js = _translate_with_ai(
-                state["client"], 
-                state["model"], 
-                state["js_content"], 
+            translated_js, is_rate_limit_js = _translate_with_ai(
+                state["client"],
+                state["model"],
+                state["js_content"],
                 "javascript",
                 session_id
             )
+
+            # Check for rate limit error - STOP WORKFLOW IMMEDIATELY
+            if is_rate_limit_js:
+                state["success"] = False
+                state["error_messages"].append("Rate limit error khi dịch JavaScript - dừng workflow")
+                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch JavaScript - dừng workflow ngay lập tức")
+                return state
+
             if translated_js:
                 print("✓ JavaScript content đã được dịch thành công")
                 progress_tracker.update_step(session_id, details=f"✓ JavaScript đã dịch - {len(translated_js)} chars")
@@ -100,41 +116,43 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
     return state
 
 
-def _translate_with_ai(client, model, content: str, content_type: str, session_id: str) -> str:
+def _translate_with_ai(client, model, content: str, content_type: str, session_id: str) -> tuple:
     """
     Dịch nội dung bằng AI.
-    
+
     Args:
         client: Google GenAI client
         model: Model name
         content: Nội dung cần dịch
         content_type: Loại nội dung ("html" hoặc "javascript")
         session_id: Session ID cho progress tracking
-        
+
     Returns:
-        Nội dung đã dịch hoặc None nếu thất bại
+        tuple: (translated_content, is_rate_limit_error)
+            - translated_content: Nội dung đã dịch hoặc None nếu thất bại
+            - is_rate_limit_error: True nếu gặp lỗi 429/quota, False otherwise
     """
     if not content or len(content.strip()) == 0:
-        return None
-    
+        return (None, False)
+
     # Tạo prompt dịch dựa trên loại content
     if content_type == "html":
         prompt_template = get_prompt_from_env('translate_html')
         if prompt_template is None:
             print("ERROR: Không thể đọc prompt_translate_html từ biến môi trường")
-            return None
+            return (None, False)
         prompt = prompt_template.replace('{content}', content)
     elif content_type == "javascript":
         prompt_template = get_prompt_from_env('translate_js')
         if prompt_template is None:
             print("ERROR: Không thể đọc prompt_translate_js từ biến môi trường")
-            return None
+            return (None, False)
         prompt = prompt_template.replace('{js_content}', content)
         # Nếu có HTML content trong state, có thể thêm vào
         # prompt = prompt.replace('{html_content}', state.get('html_content', ''))
     else:
         print(f"ERROR: Loại content không được hỗ trợ: {content_type}")
-        return None
+        return (None, False)
     
     # Tạo request cho AI
     contents = [
@@ -163,17 +181,17 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
         max_retries=3
     )
 
-    # Check for rate limit error - return None (translation is optional, workflow continues)
+    # Check for rate limit error - RETURN IMMEDIATELY WITH FLAG
     if is_rate_limit:
-        print(f"🚫 Rate limit error while translating {content_type} - skipping translation")
-        progress_tracker.update_step(session_id, details=f"🚫 Rate limit - bỏ qua dịch {content_type}")
-        return None
+        print(f"🚫 Rate limit error while translating {content_type} - will stop workflow")
+        progress_tracker.update_step(session_id, details=f"🚫 Rate limit error khi dịch {content_type}")
+        return (None, True)  # Return with rate limit flag
 
     # Check for other errors after retries
     if error_msg:
         print(f"ERROR: Không thể dịch {content_type} sau 3 lần thử: {error_msg}")
         progress_tracker.update_step(session_id, details=f"⚠️ Lỗi dịch {content_type}")
-        return None
+        return (None, False)  # Non-rate-limit error
 
     # Process successful response
     if response and hasattr(response, 'text') and response.text:
@@ -193,12 +211,12 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
             # 🧹 Cleanup response object trước khi return
             del response
             del translated_content
-            return result
+            return (result, False)  # Success, no rate limit
         else:
             print(f"WARNING: AI trả về nội dung rỗng cho {content_type}")
             del response
             del translated_content
-            return None
+            return (None, False)  # Empty response, not rate limit
     else:
         print(f"WARNING: AI không trả về nội dung cho {content_type}")
-        return None
+        return (None, False)  # No response, not rate limit
