@@ -9,6 +9,12 @@ from ...services.progress_tracker import progress_tracker
 def generate_report_content_node(state: ReportState) -> ReportState:
     """Node để chuyển nội dung nghiên cứu thành báo cáo phân tích chuyên sâu (markdown)"""
     session_id = state["session_id"]
+
+    # CHECK RATE LIMIT FLAG - Skip node if already hit rate limit
+    if state.get("rate_limit_stop"):
+        print(f"⛔ [{session_id}] Skipping generate_report_content - rate limit flag is set")
+        return state
+
     attempt_key = "report_attempt"
     if attempt_key not in state:
         state[attempt_key] = 0
@@ -66,7 +72,9 @@ def generate_report_content_node(state: ReportState) -> ReportState:
     if is_rate_limit:
         state["error_messages"].append(error_msg)
         state["success"] = False
-        progress_tracker.error_progress(session_id, "🚫 Rate limit error - dừng workflow ngay lập tức")
+        state["rate_limit_stop"] = True  # SET FLAG to stop workflow
+        progress_tracker.error_progress(session_id, "🚫 Rate limit error - đã set flag dừng workflow")
+        print(f"⛔ [{session_id}] rate_limit_stop flag SET - workflow will terminate")
         return state
 
     # Check for other errors after retries

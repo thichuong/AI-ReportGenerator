@@ -11,9 +11,16 @@ from ...models import CryptoReport as Report
 def save_report_to_database(state: ReportState) -> ReportState:
     """Save report to database with retry logic for SSL errors"""
     session_id = state.get("session_id")
+
+    # CHECK RATE LIMIT FLAG - Skip saving if rate limit was hit
+    if state.get("rate_limit_stop"):
+        print(f"⛔ [{session_id}] Skipping save_database - rate limit flag is set (will NOT save to database)")
+        progress_tracker.error_progress(session_id, "Không lưu báo cáo vào database do gặp rate limit error")
+        return state
+
     max_retries = 3
     session = None
-    
+
     # Validate required data
     if "error_messages" not in state:
         state["error_messages"] = []

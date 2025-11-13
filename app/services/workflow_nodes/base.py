@@ -16,16 +16,16 @@ class ReportState(TypedDict):
     """State schema cho report generation workflow"""
     # Session tracking
     session_id: str
-    
+
     # Input parameters
     api_key: str
     max_attempts: int
-    
+
     # File paths
     research_analysis_prompt_path: Optional[str]
     data_validation_prompt_path: Optional[str]
     create_report_prompt_path: Optional[str]
-    
+
     # Processing state
     research_analysis_prompt: Optional[str]
     data_validation_prompt: Optional[str]
@@ -35,7 +35,7 @@ class ReportState(TypedDict):
     validation_result: Optional[str]
     interface_content: Optional[str]
     realtime_data: Optional[dict]  # Cache for real-time dashboard data
-    
+
     # Output
     html_content: Optional[str]
     css_content: Optional[str]
@@ -43,21 +43,22 @@ class ReportState(TypedDict):
     html_content_en: Optional[str]  # HTML content translated to English
     js_content_en: Optional[str] # JS content translated to English
     report_id: Optional[int]
-    
+
     # Control flow
     current_attempt: int
     error_messages: List[str]
     success: bool
-    
+    rate_limit_stop: Optional[bool]  # Flag to stop workflow immediately on 429 error
+
     # Component-specific attempt counters (for workflow v2)
     html_attempt: Optional[int]
     js_attempt: Optional[int]
     css_attempt: Optional[int]
     interface_attempt: Optional[int]  # For backward compatibility
-    
+
     # Timestamps
     created_at: Optional[str]
-    
+
     # Gemini client
     client: Optional[object]
     model: str

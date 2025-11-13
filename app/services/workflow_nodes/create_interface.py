@@ -10,11 +10,17 @@ from ...services.progress_tracker import progress_tracker
 def create_interface_node(state: ReportState) -> ReportState:
     """Node để tạo giao diện từ báo cáo nghiên cứu"""
     session_id = state["session_id"]
+
+    # CHECK RATE LIMIT FLAG - Skip node if already hit rate limit
+    if state.get("rate_limit_stop"):
+        print(f"⛔ [{session_id}] Skipping create_interface - rate limit flag is set")
+        return state
+
     interface_attempt_key = "interface_attempt"
     if interface_attempt_key not in state:
         state[interface_attempt_key] = 0
     state[interface_attempt_key] += 1
-    
+
     progress_tracker.update_step(session_id, 5, f"Tạo giao diện (lần {state[interface_attempt_key]})", "Chuẩn bị tạo HTML, CSS, JS")
     report_md = state.get('report_content') or state.get('research_content', '')
     create_report_prompt = get_prompt_from_env('create_report')
@@ -51,7 +57,9 @@ def create_interface_node(state: ReportState) -> ReportState:
     if is_rate_limit:
         state["error_messages"].append(error_msg)
         state["success"] = False
-        progress_tracker.error_progress(session_id, "🚫 Rate limit error - dừng workflow ngay lập tức")
+        state["rate_limit_stop"] = True  # SET FLAG to stop workflow
+        progress_tracker.error_progress(session_id, "🚫 Rate limit error - đã set flag dừng workflow")
+        print(f"⛔ [{session_id}] rate_limit_stop flag SET - workflow will terminate")
         return state
 
     # Check for other errors after retries

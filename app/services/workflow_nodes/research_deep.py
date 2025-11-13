@@ -10,7 +10,12 @@ from ...services.progress_tracker import progress_tracker
 def research_deep_node(state: ReportState) -> ReportState:
     """Node để thực hiện nghiên cứu sâu + validation với Google Search và real-time data trong 1 lần gọi"""
     session_id = state["session_id"]
-    
+
+    # CHECK RATE LIMIT FLAG - Skip node if already hit rate limit
+    if state.get("rate_limit_stop"):
+        print(f"⛔ [{session_id}] Skipping research_deep - rate limit flag is set")
+        return state
+
     # Initialize current_attempt if not exists
     if "current_attempt" not in state:
         state["current_attempt"] = 0
@@ -83,8 +88,10 @@ def research_deep_node(state: ReportState) -> ReportState:
             # Check for rate limit error - stop immediately
             if is_rate_limit:
                 state["error_messages"].append(error_msg)
-                progress_tracker.update_step(session_id, details=f"🚫 Rate limit error - dừng workflow ngay lập tức")
                 state["success"] = False
+                state["rate_limit_stop"] = True  # SET FLAG to stop workflow
+                progress_tracker.update_step(session_id, details=f"🚫 Rate limit error - đã set flag dừng workflow")
+                print(f"⛔ [{session_id}] rate_limit_stop flag SET - workflow will terminate")
                 return state
 
             # Check for other errors after retries

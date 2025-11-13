@@ -9,16 +9,25 @@ from ...services.progress_tracker import progress_tracker
 def translate_content_node(state: ReportState) -> Dict[str, Any]:
     """
     Node để dịch nội dung HTML và JavaScript từ tiếng Việt sang tiếng Anh bằng AI.
-    
+
     Args:
         state: Trạng thái hiện tại của workflow
-        
+
     Returns:
         Dict chứa nội dung đã dịch
     """
     session_id = state["session_id"]
+
+    # CHECK RATE LIMIT FLAG - Skip node if already hit rate limit
+    if state.get("rate_limit_stop"):
+        print(f"⛔ [{session_id}] Skipping translate_content - rate limit flag is set")
+        # Ensure keys exist before returning
+        state.setdefault("html_content_en", None)
+        state.setdefault("js_content_en", None)
+        return state
+
     progress_tracker.update_step(session_id, 7, "Dịch nội dung", "Dịch HTML và JavaScript từ tiếng Việt sang tiếng Anh")
-    
+
     try:
         print("\n=== BƯỚC DỊCH NỘI DUNG ===")
         print("Bắt đầu dịch HTML và JavaScript content từ tiếng Việt sang tiếng Anh...")
@@ -41,8 +50,10 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
             # Check for rate limit error - STOP WORKFLOW IMMEDIATELY
             if is_rate_limit_html:
                 state["success"] = False
+                state["rate_limit_stop"] = True  # SET FLAG to stop workflow
                 state["error_messages"].append("Rate limit error khi dịch HTML - dừng workflow")
-                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch HTML - dừng workflow ngay lập tức")
+                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch HTML - đã set flag dừng workflow")
+                print(f"⛔ [{session_id}] rate_limit_stop flag SET - workflow will terminate")
                 return state
 
             if translated_html:
@@ -66,8 +77,10 @@ def translate_content_node(state: ReportState) -> Dict[str, Any]:
             # Check for rate limit error - STOP WORKFLOW IMMEDIATELY
             if is_rate_limit_js:
                 state["success"] = False
+                state["rate_limit_stop"] = True  # SET FLAG to stop workflow
                 state["error_messages"].append("Rate limit error khi dịch JavaScript - dừng workflow")
-                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch JavaScript - dừng workflow ngay lập tức")
+                progress_tracker.error_progress(session_id, "🚫 Rate limit error khi dịch JavaScript - đã set flag dừng workflow")
+                print(f"⛔ [{session_id}] rate_limit_stop flag SET - workflow will terminate")
                 return state
 
             if translated_js:
