@@ -54,6 +54,9 @@ def generate_report_content_node(state: ReportState) -> ReportState:
         temperature=0.5,
         candidate_count=1,
         max_output_tokens=10000,
+        thinking_config=types.ThinkingConfig(
+            thinking_budget=24576,
+        ),
     )
 
     # Call API with centralized error handler
