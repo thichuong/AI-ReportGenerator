@@ -53,7 +53,7 @@ def generate_report_content_node(state: ReportState) -> ReportState:
     config = types.GenerateContentConfig(
         temperature=0.5,
         candidate_count=1,
-        max_output_tokens=15000,
+        max_output_tokens=25000,
         thinking_config=types.ThinkingConfig(
             thinking_budget=4096,
         ),
