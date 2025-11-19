@@ -39,8 +39,9 @@ def create_interface_node(state: ReportState) -> ReportState:
     simple_config = types.GenerateContentConfig(
         temperature=0,
         candidate_count=1,
+        max_output_tokens=65536,
         thinking_config=types.ThinkingConfig(
-            thinking_budget=24576,
+            thinking_budget=4096,
         ),
     )
     

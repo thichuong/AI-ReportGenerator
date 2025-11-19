@@ -180,8 +180,9 @@ def _translate_with_ai(client, model, content: str, content_type: str, session_i
     config = types.GenerateContentConfig(
         temperature=0.1,  # Low temperature để dịch chính xác
         candidate_count=1,
+        max_output_tokens=65536,
         thinking_config=types.ThinkingConfig(
-            thinking_budget=24576,
+            thinking_budget=2048,
         ),
     )
     

@@ -51,11 +51,12 @@ def research_deep_node(state: ReportState) -> ReportState:
         ]
         generate_content_config = types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(
-                thinking_budget=24576,  # Tăng thinking budget cho combined task
+                thinking_budget=8192,  # Giảm thinking xuống ~8k-10k để dành đất cho nội dung
             ),
             tools=tools,
-            temperature=0.5,
+            temperature=0.7,
             candidate_count=1,
+            max_output_tokens=60000,
         )
         
         # Tạo request content với combined prompt
@@ -71,7 +72,7 @@ def research_deep_node(state: ReportState) -> ReportState:
         # Gọi API 3 lần để có 3 response khác nhau (do model không hỗ trợ multiple candidates)
         all_responses = []
 
-        for call_attempt in range(3):
+        for call_attempt in range(1):
             progress_tracker.update_step(session_id, details=f"Gọi Combined AI API lần {call_attempt + 1}/3...")
 
             # Use centralized error handler
