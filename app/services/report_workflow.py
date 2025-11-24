@@ -21,6 +21,7 @@ except Exception:  # pragma: no cover - allow code to run when langgraph is abse
     END = None
 
 from .progress_tracker import progress_tracker
+from .google_indexing import notify_google_indexing
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,16 @@ def generate_auto_research_report_langgraph_v2(api_key: str, max_attempts: int =
         "validation_result": final.get("validation_result", "UNKNOWN"),
         "interface_attempt": final.get("interface_attempt", 0),
     }
+
+    # Google Indexing API notification - notify Google when report is successfully created
+    if result.get("success") and result.get("report_id"):
+        try:
+            report_url = f"https://cryptodashboard.me/crypto_report/{result['report_id']}"
+            print(f"Triggering Google Indexing for: {report_url}")
+            notify_google_indexing(report_url)
+        except Exception as e:
+            # Silent failure - never crash the main workflow
+            print(f"Google Indexing failed silently: {e}")
 
     if not result["success"]:
         progress_tracker.error_progress(session_id, ", ".join(result.get("error_messages", [])))
