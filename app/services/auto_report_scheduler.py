@@ -50,10 +50,10 @@ def schedule_auto_report(api_key, schedule_times=None):
     Args:
         api_key (str): API key của Gemini
         schedule_times (list): List các khung giờ chạy báo cáo (format: "HH:MM")
-                              Mặc định: ["07:30", "15:00", "19:00"] (giờ Việt Nam)
+                              Mặc định: ["07:30", "19:00"] (giờ Việt Nam)
     """
     if schedule_times is None:
-        schedule_times = ["07:30", "15:00", "19:00"]  # Khung giờ mặc định
+        schedule_times = ["07:30", "19:00"]  # Khung giờ mặc định
     
     # Timezone Việt Nam
     vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')

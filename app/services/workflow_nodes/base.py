@@ -453,6 +453,11 @@ def call_gemini_with_rate_limit_handling(
             )
             # Success
             print(f"✅ [{session_id}] {operation_name} completed successfully on attempt {attempt + 1}")
+            
+            # Temporary pause to avoid rate limits
+            print(f"⏳ Pausing for 20 seconds after API call...")
+            time.sleep(20)
+            
             return (response, None, False)
 
         except Exception as e:
