@@ -31,6 +31,9 @@ pub async fn prepare_data(mut state: ReportState) -> Result<ReportState, anyhow:
     state.research_analysis_prompt = get_prompt("combined_research_validation");
     state.data_validation_prompt = get_prompt("data_validation");
     state.create_report_prompt = get_prompt("create_report");
+    state.generate_report_prompt = get_prompt("generate_report");
+    state.translate_html_prompt = get_prompt("translate_html");
+    state.translate_js_prompt = get_prompt("translate_js");
 
     // Validate required prompts
     if state.research_analysis_prompt.is_none() {

@@ -22,10 +22,14 @@ pub struct ReportState {
     pub research_analysis_prompt: Option<String>,
     pub data_validation_prompt: Option<String>,
     pub create_report_prompt: Option<String>,
+    pub generate_report_prompt: Option<String>,
+    pub translate_html_prompt: Option<String>,
+    pub translate_js_prompt: Option<String>,
 
     // Generated contents
     pub research_content: Option<String>,
     pub report_content: Option<String>,
+    pub interface_content: Option<String>,
     pub html_content: Option<String>,
     pub css_content: Option<String>,
     pub js_content: Option<String>,
@@ -68,9 +72,13 @@ impl ReportState {
             research_analysis_prompt: None,
             data_validation_prompt: None,
             create_report_prompt: None,
+            generate_report_prompt: None,
+            translate_html_prompt: None,
+            translate_js_prompt: None,
 
             research_content: None,
             report_content: None,
+            interface_content: None,
             html_content: None,
             css_content: None,
             js_content: None,

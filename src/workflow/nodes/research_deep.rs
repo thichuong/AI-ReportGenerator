@@ -34,11 +34,16 @@ pub async fn research_deep(mut state: ReportState) -> Result<ReportState, anyhow
         }
     };
 
-    // Build the full prompt with real-time data
+    // Build the full prompt with real-time data (inject via placeholder)
     let full_prompt = if let Some(ref data) = state.realtime_data {
-        format!("{}\n\n## Real-time Market Data:\n{}", prompt, data)
+        info!("[{}] Injecting real-time data into prompt", session_id);
+        prompt.replace("{{REAL_TIME_DATA}}", data)
     } else {
-        prompt
+        info!("[{}] No real-time data, using fallback message", session_id);
+        prompt.replace(
+            "{{REAL_TIME_DATA}}",
+            r#"{"notice": "Real-time data không khả dụng, sử dụng Google Search để lấy dữ liệu mới nhất"}"#,
+        )
     };
 
     // Call Gemini API

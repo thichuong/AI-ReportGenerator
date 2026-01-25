@@ -24,52 +24,41 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
         return Ok(state);
     }
 
-    // Get report content
-    let report_content = match &state.report_content {
-        Some(content) => content.clone(),
-        None => {
-            let error_msg = "Report content is missing";
-            error!("[{}] {}", session_id, error_msg);
-            state.add_error(error_msg);
-            state.success = false;
-            return Ok(state);
-        }
-    };
+    // Get report content (prefer report_content, fallback to research_content)
+    let report_md = state
+        .report_content
+        .as_ref()
+        .or(state.research_content.as_ref())
+        .cloned()
+        .unwrap_or_default();
 
-    // Build interface creation prompt
-    let prompt = format!(
-        r#"Create a complete, responsive HTML page for a crypto market report.
+    if report_md.is_empty() {
+        let error_msg = "No report content to create interface";
+        error!("[{}] {}", session_id, error_msg);
+        state.add_error(error_msg);
+        state.success = false;
+        return Ok(state);
+    }
 
-## Requirements:
-1. Use modern CSS with dark theme
-2. Include interactive elements with JavaScript
-3. Make it mobile-responsive
-4. Use professional design with gradients and animations
+    // Get create_report prompt and append content
+    let create_report_prompt = state
+        .create_report_prompt
+        .as_ref()
+        .map(|p| p.as_str())
+        .unwrap_or("Create HTML/CSS/JS interface for the following report:");
 
-## Report Content:
-{}
-
-## Output Format:
-Return the complete code in three separate code blocks:
-```html
-<!-- HTML code here -->
-```
-
-```css
-/* CSS code here */
-```
-
-```javascript
-// JavaScript code here
-```"#,
-        report_content
+    let full_prompt = format!(
+        "{}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{}",
+        create_report_prompt, report_md
     );
 
+    state.interface_attempt += 1;
+
     // Call Gemini API
-    match call_gemini_api(&state.api_key, &prompt).await {
+    match call_gemini_api(&state.api_key, &full_prompt).await {
         Ok(response) => {
             info!("[{}] Interface code generated", session_id);
-            state.report_content = Some(response);
+            state.interface_content = Some(response);
             state.success = true;
         }
         Err(e) => {
@@ -105,8 +94,8 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
             }]
         }],
         "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 16384
+            "temperature": 0.1,
+            "maxOutputTokens": 65536
         }
     });
 

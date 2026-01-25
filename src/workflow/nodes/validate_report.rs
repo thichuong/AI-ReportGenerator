@@ -49,6 +49,17 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
 fn check_report_validation(content: &str) -> String {
     let content_lower = content.to_lowercase();
 
+    // Check for Vietnamese validation markers (match Python)
+    if content.contains("KẾT QUẢ KIỂM TRA: PASS") || content.contains("KẾT QUẢ KIỂM TRA:  PASS")
+    {
+        return "PASS".to_string();
+    }
+
+    if content.contains("KẾT QUẢ KIỂM TRA: FAIL") || content.contains("KẾT QUẢ KIỂM TRA:  FAIL")
+    {
+        return "FAIL".to_string();
+    }
+
     // Check for explicit validation markers
     if content_lower.contains("validation: pass")
         || content_lower.contains("validation_result: pass")

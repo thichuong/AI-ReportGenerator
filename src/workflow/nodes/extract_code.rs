@@ -12,11 +12,11 @@ pub async fn extract_code(mut state: ReportState) -> Result<ReportState, anyhow:
     let session_id = &state.session_id.clone();
     info!("[{}] Step 6: Extract code", session_id);
 
-    // Get the response content
-    let content = match &state.report_content {
+    // Get the interface content
+    let content = match &state.interface_content {
         Some(c) => c.clone(),
         None => {
-            let error_msg = "No content to extract code from";
+            let error_msg = "No interface content to extract code from";
             error!("[{}] {}", session_id, error_msg);
             state.add_error(error_msg);
             state.success = false;

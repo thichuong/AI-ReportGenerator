@@ -32,18 +32,18 @@ pub async fn generate_content(mut state: ReportState) -> Result<ReportState, any
         }
     };
 
-    // Get create report prompt
-    let prompt = match &state.create_report_prompt {
+    // Get generate report prompt
+    let prompt = match &state.generate_report_prompt {
         Some(p) => p.clone(),
         None => {
             // Use a default prompt if not set
-            "Generate a professional crypto market report based on the following research:"
+            "Generate a professional crypto market report based on the following research:\n{content}"
                 .to_string()
         }
     };
 
-    // Build full prompt
-    let full_prompt = format!("{}\n\n## Research Content:\n{}", prompt, research_content);
+    // Build full prompt by replacing {content} placeholder
+    let full_prompt = prompt.replace("{content}", &research_content);
 
     // Call Gemini API
     match call_gemini_api(&state.api_key, &full_prompt).await {
