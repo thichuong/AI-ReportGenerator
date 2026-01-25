@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Report Generator</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .status.error {
+            border-left: 4px solid var(--error);
+        }
+
+        .status.pending {
+            border-left: 4px solid var(--warning);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+
+        .step-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        #log {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+        }
+
+        .scheduler-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--success);
+        }
+
+        .status-dot.inactive {
+            background: var(--error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 AI Report Generator</h1>
+            <p class="subtitle">Crypto Market Analysis powered by Gemini AI</p>
+        </header>
+
+        <div class="grid">
+            <!-- Generate Report Card -->
+            <div class="card">
+                <h2 class="card-title">Generate Report</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                    Start AI-powered market analysis and report generation.
+                </p>
+                <button class="btn btn-primary" id="generateBtn" onclick="generateReport()">
+                    <span id="generateBtnText">Generate Report</span>
+                </button>
+                <div id="progressContainer" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="step-info">
+                        <span id="stepName">Initializing...</span>
+                        <span id="stepCount">0/9</span>
+                    </div>
+                </div>
+                <div id="generateStatus" class="status" style="display: none;"></div>
+            </div>
+
+            <!-- Scheduler Status Card -->
+            <div class="card">
+                <h2 class="card-title">Scheduler Status</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                    Auto report generation schedule.
+                </p>
+                <button class="btn btn-secondary" onclick="checkScheduler()">
+                    Check Status
+                </button>
+                <div id="schedulerInfo" class="scheduler-status" style="display: none;">
+                    <span class="status-dot" id="schedulerDot"></span>
+                    <span id="schedulerText"></span>
+                </div>
+            </div>
+
+            <!-- Latest Report Card -->
+            <div class="card">
+                <h2 class="card-title">Latest Report</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                    View the most recent generated report.
+                </p>
+                <button class="btn btn-secondary" onclick="getLatestReport()">
+                    View Latest
+                </button>
+                <div id="latestReport" class="status" style="display: none;"></div>
+            </div>
+
+            <!-- Activity Log Card -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2 class="card-title">Activity Log</h2>
+                <div id="log">
+                    <div class="log-entry">
+                        <span class="log-time">[--:--:--]</span>
+                        Ready to generate reports...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>AI Report Generator - Rust Edition</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentSessionId = null;
+        let progressInterval = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function generateReport() {
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('generateBtnText');
+            const progressContainer = document.getElementById('progressContainer');
+            const statusDiv = document.getElementById('generateStatus');
+
+            btn.disabled = true;
+            btnText.innerHTML = '<div class="spinner"></div> Generating...';
+            progressContainer.style.display = 'block';
+            statusDiv.style.display = 'none';
+
+            log('Starting report generation...');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/generate-auto-report`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    currentSessionId = data.session_id;
+                    log(`Session started: ${currentSessionId.slice(0, 8)}...`);
+                    startProgressPolling();
+                } else {
+                    throw new Error(data.error || 'Failed to start generation');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.display = 'block';
+                btn.disabled = false;
+                btnText.textContent = 'Generate Report';
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        function startProgressPolling() {
+            progressInterval = setInterval(async () => {
+                if (!currentSessionId) {
+                    clearInterval(progressInterval);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE}/api/v1/progress/${currentSessionId}`);
+                    const data = await response.json();
+
+                    updateProgress(data);
+
+                    if (data.completed) {
+                        clearInterval(progressInterval);
+                        onGenerationComplete(data);
+                    }
+                } catch (error) {
+                    log(`Warning: Failed to fetch progress`);
+                }
+            }, 2000);
+        }
+
+        function updateProgress(data) {
+            const fill = document.getElementById('progressFill');
+            const stepName = document.getElementById('stepName');
+            const stepCount = document.getElementById('stepCount');
+
+            const percent = (data.current_step / data.total_steps) * 100;
+            fill.style.width = `${percent}%`;
+            stepName.textContent = data.step_name;
+            stepCount.textContent = `${data.current_step}/${data.total_steps}`;
+        }
+
+        function onGenerationComplete(data) {
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('generateBtnText');
+            const statusDiv = document.getElementById('generateStatus');
+            const progressFill = document.getElementById('progressFill');
+
+            btn.disabled = false;
+            btnText.textContent = 'Generate Report';
+
+            if (data.status === 'completed') {
+                progressFill.style.width = '100%';
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ Report #${data.report_id} generated successfully!`;
+                log(`✅ Report #${data.report_id} generated successfully!`);
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ ${data.error || 'Generation failed'}`;
+                log(`❌ Generation failed: ${data.error}`);
+            }
+            statusDiv.style.display = 'block';
+            currentSessionId = null;
+        }
+
+        async function checkScheduler() {
+            const info = document.getElementById('schedulerInfo');
+            const dot = document.getElementById('schedulerDot');
+            const text = document.getElementById('schedulerText');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/scheduler/status`);
+                const data = await response.json();
+
+                info.style.display = 'flex';
+                if (data.scheduler_enabled) {
+                    dot.className = 'status-dot active';
+                    text.textContent = `Active (max ${data.max_attempts} attempts)`;
+                    log('✅ Scheduler is active');
+                } else {
+                    dot.className = 'status-dot inactive';
+                    text.textContent = 'Disabled';
+                    log('⚠️ Scheduler is disabled');
+                }
+            } catch (error) {
+                log(`❌ Failed to check scheduler: ${error.message}`);
+            }
+        }
+
+        async function getLatestReport() {
+            const div = document.getElementById('latestReport');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/reports/latest`);
+                const data = await response.json();
+
+                if (data.success) {
+                    div.className = 'status success';
+                    div.innerHTML = `
+                        <strong>Report #${data.report.id}</strong><br>
+                        Created: ${new Date(data.report.created_at).toLocaleString()}<br>
+                        HTML: ${data.report.has_html ? '✅' : '❌'} | 
+                        CSS: ${data.report.has_css ? '✅' : '❌'} | 
+                        JS: ${data.report.has_js ? '✅' : '❌'} |
+                        EN: ${data.report.has_english ? '✅' : '❌'}
+                    `;
+                    log(`📄 Latest report: #${data.report.id}`);
+                } else {
+                    div.className = 'status pending';
+                    div.textContent = 'No reports found';
+                    log('⚠️ No reports found');
+                }
+                div.style.display = 'block';
+            } catch (error) {
+                div.className = 'status error';
+                div.textContent = `Error: ${error.message}`;
+                div.style.display = 'block';
+                log(`❌ Failed to fetch latest report: ${error.message}`);
+            }
+        }
+
+        // Check health on load
+        fetch(`${API_BASE}/health`)
+            .then(r => r.json())
+            .then(data => log(`🟢 Server status: ${data.status}`))
+            .catch(() => log('🔴 Server not reachable'));
+    </script>
+</body>
+</html>
