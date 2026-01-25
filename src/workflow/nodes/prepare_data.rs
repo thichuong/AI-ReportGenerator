@@ -1,17 +1,18 @@
 //! Prepare data node
 //!
-//! Initializes data and reads prompts from environment.
+//! Initializes data and reads prompts from environment or file fallback.
 //! Equivalent to `app/services/workflow_nodes/prepare_data.py`
 
 use crate::workflow::state::ReportState;
 use chrono::Utc;
-use std::env;
-use tracing::{error, info};
+use regex::Regex;
+use std::{env, fs, path::Path};
+use tracing::{error, info, warn};
 
 /// Prepares data and initializes the workflow state.
 ///
 /// - Validates API key
-/// - Reads prompts from environment variables
+/// - Reads prompts from environment variables (with file fallback)
 /// - Fetches real-time data from Redis (if available)
 pub async fn prepare_data(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id;
@@ -26,14 +27,14 @@ pub async fn prepare_data(mut state: ReportState) -> Result<ReportState, anyhow:
         return Ok(state);
     }
 
-    // Read prompts from environment variables
-    state.research_analysis_prompt = get_prompt_from_env("COMBINED_RESEARCH_VALIDATION_PROMPT");
-    state.data_validation_prompt = get_prompt_from_env("DATA_VALIDATION_PROMPT");
-    state.create_report_prompt = get_prompt_from_env("CREATE_REPORT_PROMPT");
+    // Read prompts from environment with file fallback
+    state.research_analysis_prompt = get_prompt("combined_research_validation");
+    state.data_validation_prompt = get_prompt("data_validation");
+    state.create_report_prompt = get_prompt("create_report");
 
     // Validate required prompts
     if state.research_analysis_prompt.is_none() {
-        let error_msg = "Cannot read combined research validation prompt from environment";
+        let error_msg = "Cannot read combined research validation prompt";
         error!("[{}] {}", session_id, error_msg);
         state.add_error(error_msg);
         state.success = false;
@@ -70,51 +71,179 @@ pub async fn prepare_data(mut state: ReportState) -> Result<ReportState, anyhow:
     Ok(state)
 }
 
+/// Gets prompt with fallback: env var → file.
+///
+/// Lookup order:
+/// 1. Environment variable: `prompt_name` (as-is)
+/// 2. File: `prompt_envs/.env.prompt_{name}`
+fn get_prompt(prompt_name: &str) -> Option<String> {
+    // First try environment variable
+    if let Some(content) = get_prompt_from_env(prompt_name) {
+        info!("Loaded prompt '{}' from environment", prompt_name);
+        return Some(process_prompt_placeholders(&content));
+    }
+
+    // Fallback: read from file
+    if let Some(content) = read_prompt_from_file(prompt_name) {
+        info!("Loaded prompt '{}' from file fallback", prompt_name);
+        return Some(process_prompt_placeholders(&content));
+    }
+
+    warn!("Could not load prompt '{}' from env or file", prompt_name);
+    None
+}
+
 /// Gets prompt from environment variable.
 fn get_prompt_from_env(name: &str) -> Option<String> {
     env::var(name).ok().filter(|s| !s.is_empty())
 }
 
+/// Reads prompt from file in `prompt_envs/` directory.
+///
+/// Tries both:
+/// - `prompt_envs/.env.prompt_{name}` (env style)
+/// - `prompt_envs/prompt_{name}.md` (markdown style)
+fn read_prompt_from_file(prompt_name: &str) -> Option<String> {
+    // Try to find prompt_envs directory relative to working directory
+    let possible_paths = vec![
+        format!("prompt_envs/.env.prompt_{}", prompt_name),
+        format!("prompt_envs/prompt_{}.md", prompt_name),
+        format!("../prompt_envs/.env.prompt_{}", prompt_name),
+        format!("../prompt_envs/prompt_{}.md", prompt_name),
+    ];
+
+    for path_str in possible_paths {
+        let path = Path::new(&path_str);
+        if path.exists() {
+            match fs::read_to_string(path) {
+                Ok(content) if !content.is_empty() => {
+                    info!("Read prompt from file: {}", path_str);
+                    return Some(content);
+                }
+                Ok(_) => {
+                    warn!("File {} is empty", path_str);
+                }
+                Err(e) => {
+                    warn!("Failed to read {}: {}", path_str, e);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Processes placeholders in prompt content.
+///
+/// Handles:
+/// - `{{ @css_root }}` - replaces with CSS root content
+fn process_prompt_placeholders(content: &str) -> String {
+    let mut result = content.to_string();
+
+    // Replace {{ @css_root }} placeholder
+    if result.contains("{{ @css_root }}") {
+        let css_root = read_css_root().unwrap_or_default();
+        result = result.replace("{{ @css_root }}", &css_root);
+    }
+
+    result
+}
+
+/// Reads CSS :root content from colors.css file.
+fn read_css_root() -> Option<String> {
+    let possible_paths = vec![
+        "app/static/css/colors.css",
+        "prompt_envs/colors.css",
+        "../app/static/css/colors.css",
+    ];
+
+    for path_str in possible_paths {
+        let path = Path::new(path_str);
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(path) {
+                // Extract :root { ... } content
+                if let Ok(regex) = Regex::new(r":root\s*\{([^}]+)\}") {
+                    if let Some(captures) = regex.captures(&content) {
+                        if let Some(root_content) = captures.get(1) {
+                            return Some(root_content.as_str().trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
 /// Replaces date placeholders in prompt text.
 fn replace_date_placeholders(text: &str) -> String {
     let now = Utc::now();
-    text.replace("{{DATE}}", &now.format("%Y-%m-%d").to_string())
+    text.replace("<<@day>>", &now.format("%d").to_string())
+        .replace("<<@month>>", &now.format("%m").to_string())
+        .replace("<<@year>>", &now.format("%Y").to_string())
+        .replace("{{DATE}}", &now.format("%Y-%m-%d").to_string())
         .replace("{{YEAR}}", &now.format("%Y").to_string())
         .replace("{{MONTH}}", &now.format("%m").to_string())
         .replace("{{DAY}}", &now.format("%d").to_string())
 }
 
-/// Fetches real-time market data from Redis.
+/// Fetches real-time market data from Redis Stream using multi-tier-cache.
 async fn get_realtime_data() -> Result<Option<String>, anyhow::Error> {
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+    info!(
+        "📡 Connecting to Redis: {}",
+        &redis_url[..redis_url.len().min(30)]
+    );
 
-    let client = redis::Client::open(redis_url)?;
-    let mut con = client.get_multiplexed_async_connection().await?;
+    // Use multi-tier-cache RedisStreams
+    let streams = match multi_tier_cache::redis_streams::RedisStreams::new(&redis_url).await {
+        Ok(s) => {
+            info!("✅ Redis connection established");
+            s
+        }
+        Err(e) => {
+            warn!("❌ Failed to connect to Redis: {}", e);
+            return Ok(None);
+        }
+    };
 
-    // Read from Redis Stream 'market_data_stream'
-    let result: redis::RedisResult<Vec<redis::streams::StreamReadReply>> = redis::cmd("XREAD")
-        .arg("COUNT")
-        .arg(1)
-        .arg("STREAMS")
-        .arg("market_data_stream")
-        .arg("0")
-        .query_async(&mut con)
-        .await;
+    // Read latest entry from 'market_data_stream'
+    info!("📥 Reading from stream 'market_data_stream'...");
+    match streams.stream_read_latest("market_data_stream", 1).await {
+        Ok(entries) => {
+            if let Some(entry) = entries.first() {
+                info!("✅ Got stream entry with ID: {}", entry.0);
 
-    match result {
-        Ok(streams) => {
-            if let Some(stream) = streams.first() {
-                if let Some(entry) = stream.keys.first().and_then(|k| k.ids.first()) {
-                    // Extract data from stream entry
-                    if let Some(data) = entry.map.get("data") {
-                        if let redis::Value::BulkString(bytes) = data {
-                            return Ok(Some(String::from_utf8_lossy(bytes).to_string()));
-                        }
+                // Find 'data' field in entry
+                for (field, value) in &entry.1 {
+                    if field == "data" {
+                        info!("📊 Data field found, length: {} bytes", value.len());
+
+                        // Log preview of data
+                        let preview = if value.len() > 200 {
+                            format!("{}...", &value[..200])
+                        } else {
+                            value.clone()
+                        };
+                        info!("📋 Data preview: {}", preview);
+
+                        return Ok(Some(value.clone()));
                     }
                 }
+
+                warn!(
+                    "⚠️ No 'data' field found in entry. Available fields: {:?}",
+                    entry.1.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>()
+                );
+            } else {
+                warn!("⚠️ No entries found in 'market_data_stream'");
             }
             Ok(None)
         }
-        Err(_) => Ok(None),
+        Err(e) => {
+            warn!("❌ Failed to read from stream: {}", e);
+            Ok(None)
+        }
     }
 }
