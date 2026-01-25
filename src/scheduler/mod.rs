@@ -76,7 +76,7 @@ impl AutoReportScheduler {
 
         loop {
             // Calculate next run time
-            let now = Utc::now().with_timezone(&Ho_Chi_Minh);
+            let _now = Utc::now().with_timezone(&Ho_Chi_Minh);
             let next_run = self.get_next_run_time();
             let wait_duration = self.calculate_wait_duration(next_run);
 
