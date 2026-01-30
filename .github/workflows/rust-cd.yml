@@ -41,7 +41,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         script: |
           # Stop running application to release file lock
-          pkill -f "ai-report-generator" || true
+          pkill -f "[a]i-report-generator" || true
           # Create directory
           mkdir -p ~/AI-ReportGenerator/target/release
 
