@@ -33,13 +33,17 @@ jobs:
     - name: Build Release
       run: cargo build --release --verbose
 
-    - name: Create directory on Google VM
+    - name: Prepare Server
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
-        script: mkdir -p ~/AI-ReportGenerator/target/release
+        script: |
+          # Stop running application to release file lock
+          pkill -f "ai-report-generator" || true
+          # Create directory
+          mkdir -p ~/AI-ReportGenerator/target/release
 
     - name: Deploy to Google VM
       uses: appleboy/scp-action@master
@@ -65,8 +69,7 @@ jobs:
           # Ensure permissions
           chmod +x ~/AI-ReportGenerator/target/release/ai-report-generator
           
-          # Kill old process
-          pkill -f "ai-report-generator" || true
+
           
           echo "Starting application..."
           # Change to project root so .env can be found
