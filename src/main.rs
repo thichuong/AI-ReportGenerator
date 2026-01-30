@@ -2,7 +2,7 @@
 //!
 //! Starts the Axum web server and auto report scheduler.
 
-use ai_report_generator::{create_pool, create_router, start_auto_report_scheduler, AppState};
+use ai_report_generator::{create_pool, create_router, db, start_auto_report_scheduler, AppState};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
@@ -27,6 +27,9 @@ async fn main() -> anyhow::Result<()> {
     // Create database connection pool
     let pool = create_pool().await?;
     info!("✅ Database connection pool created");
+
+    // Initialize database schema
+    db::init::init_db(&pool).await?;
 
     // Create application state
     let state = AppState::new(pool.clone());

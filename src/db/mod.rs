@@ -3,6 +3,7 @@
 //! Provides connection pool and model definitions.
 //! Equivalent to `app/db/session.py` and `app/models/`
 
+pub mod init;
 pub mod models;
 
 use sqlx::postgres::PgPoolOptions;
