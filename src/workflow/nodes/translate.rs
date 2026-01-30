@@ -135,7 +135,11 @@ async fn translate_with_prompt(
         }],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 65536
+            "maxOutputTokens": 65536,
+            "thinkingConfig": {
+                "includeThoughts": false,
+                "thinkingBudget": 2048
+            }
         }
     });
 

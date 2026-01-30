@@ -4,6 +4,7 @@
 //! Equivalent to `app/services/workflow_nodes/validate_report.py`
 
 use crate::workflow::state::ReportState;
+use regex::Regex;
 use tracing::{info, warn};
 
 /// Validates the research report content.
@@ -39,6 +40,13 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
 
     info!("[{}] Validation result: {}", session_id, validation_result);
     state.validation_result = Some(validation_result);
+    
+    // Update success status based on validation
+    if state.validation_result.as_deref() == Some("PASS") {
+         // Keep success=true (default/previous state check might be needed if false)
+    } else if state.validation_result.as_deref() == Some("FAIL") {
+         state.success = false;
+    }
 
     Ok(state)
 }
@@ -75,27 +83,47 @@ fn check_report_validation(content: &str) -> String {
         return "FAIL".to_string();
     }
 
-    // Basic quality checks
-    let word_count = content.split_whitespace().count();
-
-    // Must have minimum content length
-    if word_count < 100 {
+    // Fallback quality validation (Match Python logic)
+    // 1. Length check (> 2000 chars roughly matches Python check)
+    if content.len() < 2000 {
         return "FAIL".to_string();
     }
 
-    // Check for required sections (basic heuristic)
-    let has_analysis = content_lower.contains("phân tích")
-        || content_lower.contains("analysis")
-        || content_lower.contains("đánh giá");
-    let has_data = content_lower.contains("dữ liệu")
-        || content_lower.contains("data")
-        || content_lower.contains("thị trường");
-
-    if has_analysis && has_data {
+    // 2. Element checks
+    let mut quality_score = 0;
+    
+    // has_btc
+    if content_lower.contains("bitcoin") || content_lower.contains("btc") {
+        quality_score += 1;
+    }
+    
+    // has_analysis
+    if content_lower.contains("phân tích") || content_lower.contains("analysis") || content_lower.contains("thị trường") || content_lower.contains("market") {
+        quality_score += 1;
+    }
+    
+    // has_numbers (regex)
+    if let Ok(re) = Regex::new(r"\d+\.?\d*\s*%|\$\d+") {
+        if re.is_match(content) {
+            quality_score += 1;
+        }
+    }
+    
+    // has_fng
+    if content_lower.contains("fear") || content_lower.contains("greed") || content_lower.contains("sợ hãi") || content_lower.contains("tham lam") {
+        quality_score += 1;
+    }
+    
+    // has_validation_table
+    if content.contains("Bảng Đối chiếu") || content.contains("Validation Summary") || content.contains("| Dữ liệu") || content.contains("| BTC Price") {
+        quality_score += 1;
+    }
+    
+    if quality_score >= 4 {
         return "PASS".to_string();
     }
 
-    "UNKNOWN".to_string()
+    "FAIL".to_string()
 }
 
 #[cfg(test)]

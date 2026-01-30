@@ -24,6 +24,77 @@ pub struct Article {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
+/// New article for insertion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewArticle {
+    pub title: String,
+    pub content: Option<String>,
+    pub summary: Option<String>,
+    pub symbol: Option<String>,
+    pub report_type: Option<String>,
+    pub is_published: Option<bool>,
+}
+
+impl Article {
+    /// Inserts a new article into the database.
+    pub async fn insert(pool: &sqlx::PgPool, article: NewArticle) -> Result<Self, sqlx::Error> {
+        let result = sqlx::query_as::<_, Article>(
+            r#"
+            INSERT INTO articles (title, content, summary, symbol, report_type, is_published, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, COALESCE($6, false), NOW(), NOW())
+            RETURNING id, title, content, summary, symbol, report_type, is_published, created_at, updated_at
+            "#,
+        )
+        .bind(&article.title)
+        .bind(&article.content)
+        .bind(&article.summary)
+        .bind(&article.symbol)
+        .bind(&article.report_type)
+        .bind(&article.is_published)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    /// Finds an article by ID.
+    pub async fn find_by_id(pool: &sqlx::PgPool, id: i32) -> Result<Option<Self>, sqlx::Error> {
+        let result = sqlx::query_as::<_, Article>(
+            "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    /// Lists articles with pagination.
+    pub async fn list(pool: &sqlx::PgPool, limit: i64, offset: i64) -> Result<Vec<Self>, sqlx::Error> {
+        let result = sqlx::query_as::<_, Article>(
+            "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    /// Finds the latest article by symbol.
+    pub async fn find_latest_by_symbol(pool: &sqlx::PgPool, symbol: &str) -> Result<Option<Self>, sqlx::Error> {
+        let result = sqlx::query_as::<_, Article>(
+            "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles WHERE symbol = $1 ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(symbol)
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(result)
+    }
+}
+
 /// Crypto report model for AI-generated content.
 ///
 /// Equivalent to Python's `CryptoReport` SQLAlchemy model.

@@ -94,8 +94,12 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
             }]
         }],
         "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": 65536
+            "temperature": 0.0,
+            "maxOutputTokens": 65536,
+            "thinkingConfig": {
+                "includeThoughts": false,
+                "thinkingBudget": 4096
+            }
         }
     });
 

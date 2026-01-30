@@ -36,8 +36,10 @@ pub async fn extract_code(mut state: ReportState) -> Result<ReportState, anyhow:
     }
 
     state.html_content = html;
-    state.css_content = css;
-    state.js_content = js;
+    
+    // Set default CSS/JS if missing (match Python behavior)
+    state.css_content = css.or(Some("/* CSS được tạo tự động */\nbody { font-family: Arial, sans-serif; margin: 20px; }".to_string()));
+    state.js_content = js.or(Some("// JavaScript được tạo tự động\nconsole.log('Report loaded successfully');".to_string()));
     state.success = true;
 
     info!("[{}] Code extraction completed", session_id);
