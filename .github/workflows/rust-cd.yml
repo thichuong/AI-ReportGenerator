@@ -55,10 +55,8 @@ jobs:
         script: |
           cd ~/AI-ReportGenerator
           chmod +x ai-report-generator
-          # Stop previous instance if running
           pkill -f "ai-report-generator" || true
-          # Start new instance in background
-          nohup ./ai-report-generator > app.log 2>&1 < /dev/null &
-          disown
+          # Start new instance in background with setsid to detach from shell
+          setsid ./ai-report-generator > app.log 2>&1 < /dev/null &
           exit 0
 
