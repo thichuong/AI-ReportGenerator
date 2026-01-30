@@ -179,3 +179,23 @@ Sau khi chạy ứng dụng, bạn có thể truy cập:
 ## License
 
 Dự án này được phát hành dưới **Apache License 2.0**. Xem file [LICENSE](LICENSE) để biết chi tiết.
+
+## Rust Google VM Deployment (CI/CD)
+
+Dự án có workflow tự động build và deploy ứng dụng Rust lên Google VM.
+
+### Cấu hình GitHub Secrets
+
+Để workflow hoạt động, bạn cần cấu hình các secrets sau trong phần **Settings > Secrets and variables > Actions** của repository:
+
+- `SSH_HOST`: Địa chỉ IP public của Google VM.
+- `SSH_USER`: Username SSH (ví dụ: `thichuong`).
+- `SSH_KEY`: SSH private key để truy cập VM.
+
+### Workflow hoạt động như thế nào?
+
+1.  Mỗi khi có commit lên nhánh `main`, workflow `.github/workflows/rust-cd.yml` sẽ được kích hoạt.
+2.  Mã nguồn Rust sẽ được build với profile `--release`.
+3.  File binary `ai-report-generator` sẽ được copy vào thư mục `~/AI-ReportGenerator/` trên máy chủ Google VM.
+4.  Ứng dụng sẽ được **khởi động lại tự động** (stop process cũ, start process mới chạy nền).
+5.  Logs sẽ được lưu tại `~/AI-ReportGenerator/app.log`.
