@@ -62,16 +62,17 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         command_timeout: 30m
         script: |
-          cd ~/AI-ReportGenerator/target/release
-          echo "Listing files in directory:"
-          ls -la
+          # Ensure permissions
+          chmod +x ~/AI-ReportGenerator/target/release/ai-report-generator
           
-          chmod +x ai-report-generator
+          # Kill old process
           pkill -f "ai-report-generator" || true
           
           echo "Starting application..."
+          # Change to project root so .env can be found
+          cd ~/AI-ReportGenerator
           # Start new instance in background with setsid to detach from shell
-          setsid ./ai-report-generator > app.log 2>&1 < /dev/null &
+          setsid ./target/release/ai-report-generator > app.log 2>&1 < /dev/null &
           echo "Application started."
           exit 0
 
