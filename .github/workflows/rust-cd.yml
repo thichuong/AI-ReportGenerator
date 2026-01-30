@@ -33,6 +33,14 @@ jobs:
     - name: Build Release
       run: cargo build --release --verbose
 
+    - name: Create directory on Google VM
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: mkdir -p ~/AI-ReportGenerator/target/release
+
     - name: Deploy to Google VM
       uses: appleboy/scp-action@master
       with:
@@ -40,10 +48,11 @@ jobs:
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         source: "target/release/ai-report-generator"
-        target: "~/AI-ReportGenerator"
+        target: "~/AI-ReportGenerator/target/release"
         strip_components: 2 # Remove target/release/ prefix
         overwrite: true
         timeout: 30m
+        debug: true
 
     - name: Run Application via SSH
       uses: appleboy/ssh-action@master
@@ -53,10 +62,16 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         command_timeout: 30m
         script: |
-          cd ~/AI-ReportGenerator
+          cd ~/AI-ReportGenerator/target/release
+          echo "Listing files in directory:"
+          ls -la
+          
           chmod +x ai-report-generator
           pkill -f "ai-report-generator" || true
+          
+          echo "Starting application..."
           # Start new instance in background with setsid to detach from shell
           setsid ./ai-report-generator > app.log 2>&1 < /dev/null &
+          echo "Application started."
           exit 0
 
