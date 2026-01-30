@@ -43,6 +43,7 @@ jobs:
         target: "~/AI-ReportGenerator"
         strip_components: 2 # Remove target/release/ prefix
         overwrite: true
+        timeout: 30m
 
     - name: Run Application via SSH
       uses: appleboy/ssh-action@master
@@ -50,14 +51,14 @@ jobs:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
+        command_timeout: 30m
         script: |
           cd ~/AI-ReportGenerator
           chmod +x ai-report-generator
           # Stop previous instance if running
           pkill -f "ai-report-generator" || true
           # Start new instance in background
-          # Start new instance in background
           nohup ./ai-report-generator > app.log 2>&1 < /dev/null &
-          sleep 5
+          disown
           exit 0
 
