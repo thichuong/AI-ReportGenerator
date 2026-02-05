@@ -47,6 +47,7 @@ jobs:
           --project=${{ secrets.GCP_PROJECT }} \
           --zone=${{ secrets.GCP_ZONE }} \
           --tunnel-through-iap \
+          --strict-host-key-checking=no \
           --command="pkill -f '[a]i-report-generator' || true; mkdir -p ~/AI-ReportGenerator/target/release"
 
     - name: Deploy to Google VM via IAP
@@ -55,7 +56,8 @@ jobs:
           ${{ secrets.SSH_USER }}@${{ secrets.GCP_VM_NAME }}:~/AI-ReportGenerator/target/release/ \
           --project=${{ secrets.GCP_PROJECT }} \
           --zone=${{ secrets.GCP_ZONE }} \
-          --tunnel-through-iap
+          --tunnel-through-iap \
+          --strict-host-key-checking=no
 
     - name: Run Application via IAP
       run: |
@@ -63,5 +65,6 @@ jobs:
           --project=${{ secrets.GCP_PROJECT }} \
           --zone=${{ secrets.GCP_ZONE }} \
           --tunnel-through-iap \
+          --strict-host-key-checking=no \
           --command="chmod +x ~/AI-ReportGenerator/target/release/ai-report-generator && cd ~/AI-ReportGenerator && setsid ./target/release/ai-report-generator > app.log 2>&1 < /dev/null &"
         echo "Application started."
