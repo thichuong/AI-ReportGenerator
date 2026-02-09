@@ -66,5 +66,5 @@ jobs:
           --zone=${{ secrets.GCP_ZONE }} \
           --tunnel-through-iap \
           --strict-host-key-checking=no \
-          --command="chmod +x ~/AI-ReportGenerator/target/release/ai-report-generator && cd ~/AI-ReportGenerator && setsid ./target/release/ai-report-generator > app.log 2>&1 < /dev/null &"
+          --command="chmod +x ~/AI-ReportGenerator/target/release/ai-report-generator && cd ~/AI-ReportGenerator && nohup ./target/release/ai-report-generator > app.log 2>&1 &"
         echo "Application started."
