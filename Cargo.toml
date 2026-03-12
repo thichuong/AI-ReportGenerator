@@ -1,7 +1,7 @@
 [package]
 name = "ai-report-generator"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "AI Report Generator - Rust implementation for workflow, scheduler, and database"
 authors = ["ThiChuong"]
 
@@ -21,7 +21,9 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 
 # Redis streams via multi-tier-cache
-multi-tier-cache = "0.5"
+multi-tier-cache = "0.6.1"
+bytes = "1"
+
 
 # Error handling
 thiserror = "2"

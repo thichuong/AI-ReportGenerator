@@ -17,6 +17,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "bytes",
  "chrono",
  "chrono-tz",
  "dotenvy",
@@ -81,17 +82,6 @@ dependencies = [
  "event-listener",
  "event-listener-strategy",
  "pin-project-lite",
-]
-
-[[package]]
-name = "async-trait"
-version = "0.1.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1210,12 +1200,12 @@ dependencies = [
 
 [[package]]
 name = "multi-tier-cache"
-version = "0.5.7"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a242531097e01a7df1bae089937743b414ec3bce6e556793cf9cfa09bf7192a"
+checksum = "2a13e0407794e2f9cb8ed4b0459177c753000efec6a8fa033f4635875a107e9d"
 dependencies = [
  "anyhow",
- "async-trait",
+ "bytes",
  "dashmap",
  "futures-util",
  "moka",

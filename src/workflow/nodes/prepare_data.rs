@@ -8,6 +8,8 @@ use chrono::Utc;
 use regex::Regex;
 use std::{env, fs, path::Path};
 use tracing::{error, info, warn};
+use multi_tier_cache::StreamingBackend;
+
 
 /// Prepares data and initializes the workflow state.
 ///
@@ -214,6 +216,7 @@ async fn get_realtime_data() -> Result<Option<String>, anyhow::Error> {
     // Read latest entry from 'market_data_stream'
     info!("📥 Reading from stream 'market_data_stream'...");
     match streams.stream_read_latest("market_data_stream", 1).await {
+
         Ok(entries) => {
             if let Some(entry) = entries.first() {
                 info!("✅ Got stream entry with ID: {}", entry.0);

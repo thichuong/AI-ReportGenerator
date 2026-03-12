@@ -144,7 +144,8 @@ mod tests {
 
     #[test]
     fn test_validation_pass_quality() {
-        let content = "Đây là bản phân tích thị trường với dữ liệu chi tiết. ".repeat(20);
+        let content = "Đây là bản phân tích thị trường BTC (Bitcoin) với dữ liệu chi tiết. Fear and Greed Index đang ở mức tham lam. Bảng Đối chiếu dữ liệu cho thấy giá đang tăng. ".repeat(40);
         assert_eq!(check_report_validation(&content), "PASS");
     }
+
 }
