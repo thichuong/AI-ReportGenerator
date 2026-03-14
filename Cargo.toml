@@ -21,7 +21,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 
 # Redis streams via multi-tier-cache
-multi-tier-cache = "0.6.2"
+multi-tier-cache = "0.6.3"
 bytes = "1"
 
 
