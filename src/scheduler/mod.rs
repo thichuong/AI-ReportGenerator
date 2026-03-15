@@ -7,7 +7,7 @@ use chrono::{NaiveTime, Timelike, Utc};
 use chrono_tz::Asia::Ho_Chi_Minh;
 use sqlx::PgPool;
 use std::env;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tracing::{error, info, warn};
 
 use crate::workflow;

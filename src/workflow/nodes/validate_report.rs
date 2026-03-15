@@ -40,12 +40,12 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
 
     info!("[{}] Validation result: {}", session_id, validation_result);
     state.validation_result = Some(validation_result);
-    
+
     // Update success status based on validation
     if state.validation_result.as_deref() == Some("PASS") {
-         // Keep success=true (default/previous state check might be needed if false)
+        // Keep success=true (default/previous state check might be needed if false)
     } else if state.validation_result.as_deref() == Some("FAIL") {
-         state.success = false;
+        state.success = false;
     }
 
     Ok(state)
@@ -91,34 +91,46 @@ fn check_report_validation(content: &str) -> String {
 
     // 2. Element checks
     let mut quality_score = 0;
-    
+
     // has_btc
     if content_lower.contains("bitcoin") || content_lower.contains("btc") {
         quality_score += 1;
     }
-    
+
     // has_analysis
-    if content_lower.contains("phân tích") || content_lower.contains("analysis") || content_lower.contains("thị trường") || content_lower.contains("market") {
+    if content_lower.contains("phân tích")
+        || content_lower.contains("analysis")
+        || content_lower.contains("thị trường")
+        || content_lower.contains("market")
+    {
         quality_score += 1;
     }
-    
+
     // has_numbers (regex)
-    if let Ok(re) = Regex::new(r"\d+\.?\d*\s*%|\$\d+") {
-        if re.is_match(content) {
-            quality_score += 1;
-        }
+    if let Ok(re) = Regex::new(r"\d+\.?\d*\s*%|\$\d+")
+        && re.is_match(content)
+    {
+        quality_score += 1;
     }
-    
+
     // has_fng
-    if content_lower.contains("fear") || content_lower.contains("greed") || content_lower.contains("sợ hãi") || content_lower.contains("tham lam") {
+    if content_lower.contains("fear")
+        || content_lower.contains("greed")
+        || content_lower.contains("sợ hãi")
+        || content_lower.contains("tham lam")
+    {
         quality_score += 1;
     }
-    
+
     // has_validation_table
-    if content.contains("Bảng Đối chiếu") || content.contains("Validation Summary") || content.contains("| Dữ liệu") || content.contains("| BTC Price") {
+    if content.contains("Bảng Đối chiếu")
+        || content.contains("Validation Summary")
+        || content.contains("| Dữ liệu")
+        || content.contains("| BTC Price")
+    {
         quality_score += 1;
     }
-    
+
     if quality_score >= 4 {
         return "PASS".to_string();
     }
@@ -147,5 +159,4 @@ mod tests {
         let content = "Đây là bản phân tích thị trường BTC (Bitcoin) với dữ liệu chi tiết. Fear and Greed Index đang ở mức tham lam. Bảng Đối chiếu dữ liệu cho thấy giá đang tăng. ".repeat(40);
         assert_eq!(check_report_validation(&content), "PASS");
     }
-
 }

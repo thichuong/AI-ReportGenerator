@@ -50,7 +50,7 @@ impl Article {
         .bind(&article.summary)
         .bind(&article.symbol)
         .bind(&article.report_type)
-        .bind(&article.is_published)
+        .bind(article.is_published)
         .fetch_one(pool)
         .await?;
 
@@ -70,7 +70,11 @@ impl Article {
     }
 
     /// Lists articles with pagination.
-    pub async fn list(pool: &sqlx::PgPool, limit: i64, offset: i64) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn list(
+        pool: &sqlx::PgPool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Self>, sqlx::Error> {
         let result = sqlx::query_as::<_, Article>(
             "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles ORDER BY created_at DESC LIMIT $1 OFFSET $2",
         )
@@ -83,7 +87,10 @@ impl Article {
     }
 
     /// Finds the latest article by symbol.
-    pub async fn find_latest_by_symbol(pool: &sqlx::PgPool, symbol: &str) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_latest_by_symbol(
+        pool: &sqlx::PgPool,
+        symbol: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
         let result = sqlx::query_as::<_, Article>(
             "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles WHERE symbol = $1 ORDER BY created_at DESC LIMIT 1",
         )

@@ -36,10 +36,15 @@ pub async fn extract_code(mut state: ReportState) -> Result<ReportState, anyhow:
     }
 
     state.html_content = html;
-    
+
     // Set default CSS/JS if missing (match Python behavior)
-    state.css_content = css.or(Some("/* CSS được tạo tự động */\nbody { font-family: Arial, sans-serif; margin: 20px; }".to_string()));
-    state.js_content = js.or(Some("// JavaScript được tạo tự động\nconsole.log('Report loaded successfully');".to_string()));
+    state.css_content = css.or(Some(
+        "/* CSS được tạo tự động */\nbody { font-family: Arial, sans-serif; margin: 20px; }"
+            .to_string(),
+    ));
+    state.js_content = js.or(Some(
+        "// JavaScript được tạo tự động\nconsole.log('Report loaded successfully');".to_string(),
+    ));
     state.success = true;
 
     info!("[{}] Code extraction completed", session_id);
@@ -60,14 +65,13 @@ fn extract_block(text: &str, language: &str) -> Option<String> {
     // Pattern: ```language ... ```
     let pattern = format!(r"```{}\s*\n([\s\S]*?)\n```", language);
 
-    if let Ok(regex) = Regex::new(&pattern) {
-        if let Some(captures) = regex.captures(text) {
-            if let Some(code) = captures.get(1) {
-                let code_str = code.as_str().trim();
-                if !code_str.is_empty() {
-                    return Some(code_str.to_string());
-                }
-            }
+    if let Ok(regex) = Regex::new(&pattern)
+        && let Some(captures) = regex.captures(text)
+        && let Some(code) = captures.get(1)
+    {
+        let code_str = code.as_str().trim();
+        if !code_str.is_empty() {
+            return Some(code_str.to_string());
         }
     }
 

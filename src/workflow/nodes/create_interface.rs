@@ -43,8 +43,7 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
     // Get create_report prompt and append content
     let create_report_prompt = state
         .create_report_prompt
-        .as_ref()
-        .map(|p| p.as_str())
+        .as_deref()
         .unwrap_or("Create HTML/CSS/JS interface for the following report:");
 
     let full_prompt = format!(

@@ -6,8 +6,8 @@
 pub mod init;
 pub mod models;
 
-use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 use tracing::info;
 

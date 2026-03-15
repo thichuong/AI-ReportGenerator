@@ -2,14 +2,14 @@
 //!
 //! Equivalent to `app/routers/reports.py`
 
-use super::{progress::ProgressData, AppState};
+use super::{AppState, progress::ProgressData};
 use crate::db::models::CryptoReport;
 use crate::scheduler::create_manual_report;
 use crate::workflow;
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use serde::Serialize;
 use serde_json::json;

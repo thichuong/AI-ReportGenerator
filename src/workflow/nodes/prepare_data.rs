@@ -5,11 +5,10 @@
 
 use crate::workflow::state::ReportState;
 use chrono::Utc;
+use multi_tier_cache::StreamingBackend;
 use regex::Regex;
 use std::{env, fs, path::Path};
 use tracing::{error, info, warn};
-use multi_tier_cache::StreamingBackend;
-
 
 /// Prepares data and initializes the workflow state.
 ///
@@ -162,18 +161,18 @@ fn read_css_root() -> Option<String> {
         "../app/static/css/colors.css",
     ];
 
+    let regex = Regex::new(r":root\s*\{([^}]+)\}").expect("Static regex should be valid");
+
     for path_str in possible_paths {
         let path = Path::new(path_str);
-        if path.exists() {
-            if let Ok(content) = fs::read_to_string(path) {
-                // Extract :root { ... } content
-                if let Ok(regex) = Regex::new(r":root\s*\{([^}]+)\}") {
-                    if let Some(captures) = regex.captures(&content) {
-                        if let Some(root_content) = captures.get(1) {
-                            return Some(root_content.as_str().trim().to_string());
-                        }
-                    }
-                }
+        if path.exists()
+            && let Ok(content) = fs::read_to_string(path)
+        {
+            // Extract :root { ... } content
+            if let Some(captures) = regex.captures(&content)
+                && let Some(root_content) = captures.get(1)
+            {
+                return Some(root_content.as_str().trim().to_string());
             }
         }
     }
@@ -216,7 +215,6 @@ async fn get_realtime_data() -> Result<Option<String>, anyhow::Error> {
     // Read latest entry from 'market_data_stream'
     info!("📥 Reading from stream 'market_data_stream'...");
     match streams.stream_read_latest("market_data_stream", 1).await {
-
         Ok(entries) => {
             if let Some(entry) = entries.first() {
                 info!("✅ Got stream entry with ID: {}", entry.0);

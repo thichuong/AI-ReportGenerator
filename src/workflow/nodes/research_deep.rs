@@ -51,24 +51,31 @@ pub async fn research_deep(mut state: ReportState) -> Result<ReportState, anyhow
         Ok(response) => {
             info!("[{}] Research completed successfully", session_id);
             state.research_content = Some(response.clone());
-            
+
             // Check for validation result
-            let validation_result = if response.contains("KẾT QUẢ KIỂM TRA: PASS") || response.contains("validation_result: PASS") {
+            let validation_result = if response.contains("KẾT QUẢ KIỂM TRA: PASS")
+                || response.contains("validation_result: PASS")
+            {
                 "PASS"
-            } else if response.contains("KẾT QUẢ KIỂM TRA: FAIL") || response.contains("validation_result: FAIL") {
+            } else if response.contains("KẾT QUẢ KIỂM TRA: FAIL")
+                || response.contains("validation_result: FAIL")
+            {
                 "FAIL"
             } else {
                 "UNKNOWN"
             };
-            
+
             state.validation_result = Some(validation_result.to_string());
-            
+
             if validation_result == "FAIL" {
                 state.success = false;
                 info!("[{}] Research validation FAILED", session_id);
             } else {
                 state.success = true; // PASS or UNKNOWN treated as success for now (match Python UNKNOWN behavior)
-                info!("[{}] Research validation result: {}", session_id, validation_result);
+                info!(
+                    "[{}] Research validation result: {}",
+                    session_id, validation_result
+                );
             }
         }
         Err(e) => {
@@ -140,10 +147,10 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
     let text = json["candidates"][0]["content"]["parts"][0]["text"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Failed to extract text from API response"))?;
-    
+
     // Parse validation result (simple check to match Python logic)
     if text.contains("KẾT QUẢ KIỂM TRA: PASS") || text.contains("validation_result: PASS") {
-         // state.validation_result set in caller, but we return text here
+        // state.validation_result set in caller, but we return text here
     }
 
     Ok(text.to_string())

@@ -24,87 +24,87 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
     let api_key = state.api_key.clone();
 
     // Translate HTML content using translate_html prompt
-    if let Some(ref html) = state.html_content {
-        if !html.trim().is_empty() {
-            let prompt = match &state.translate_html_prompt {
-                Some(p) => p.replace("{content}", html),
-                None => {
-                    warn!(
-                        "[{}] translate_html prompt not found, using default",
-                        session_id
-                    );
-                    format!(
-                        "Translate the following HTML content from Vietnamese to English.\n\
+    if let Some(ref html) = state.html_content
+        && !html.trim().is_empty()
+    {
+        let prompt = match &state.translate_html_prompt {
+            Some(p) => p.replace("{content}", html),
+            None => {
+                warn!(
+                    "[{}] translate_html prompt not found, using default",
+                    session_id
+                );
+                format!(
+                    "Translate the following HTML content from Vietnamese to English.\n\
                          Keep all HTML tags intact. Only translate the text content.\n\n\
                          {}\n\nReturn ONLY the translated HTML without explanation.",
-                        html
-                    )
-                }
-            };
+                    html
+                )
+            }
+        };
 
-            match translate_with_prompt(&api_key, &prompt).await {
-                Ok((translated, is_rate_limit)) => {
-                    if is_rate_limit {
-                        error!("[{}] Rate limit error while translating HTML", session_id);
-                        state.rate_limit_stop = true;
-                        state.add_error("Rate limit error when translating HTML");
-                        return Ok(state);
-                    }
-                    if let Some(content) = translated {
-                        info!(
-                            "[{}] HTML translated successfully - {} chars",
-                            session_id,
-                            content.len()
-                        );
-                        state.html_content_en = Some(content);
-                    }
+        match translate_with_prompt(&api_key, &prompt).await {
+            Ok((translated, is_rate_limit)) => {
+                if is_rate_limit {
+                    error!("[{}] Rate limit error while translating HTML", session_id);
+                    state.rate_limit_stop = true;
+                    state.add_error("Rate limit error when translating HTML");
+                    return Ok(state);
                 }
-                Err(e) => {
-                    warn!("[{}] HTML translation failed: {}", session_id, e);
+                if let Some(content) = translated {
+                    info!(
+                        "[{}] HTML translated successfully - {} chars",
+                        session_id,
+                        content.len()
+                    );
+                    state.html_content_en = Some(content);
                 }
+            }
+            Err(e) => {
+                warn!("[{}] HTML translation failed: {}", session_id, e);
             }
         }
     }
 
     // Translate JS content using translate_js prompt
-    if let Some(ref js) = state.js_content {
-        if !js.trim().is_empty() {
-            let prompt = match &state.translate_js_prompt {
-                Some(p) => p.replace("{js_content}", js),
-                None => {
-                    warn!(
-                        "[{}] translate_js prompt not found, using default",
-                        session_id
-                    );
-                    format!(
-                        "Translate the following JavaScript content from Vietnamese to English.\n\
+    if let Some(ref js) = state.js_content
+        && !js.trim().is_empty()
+    {
+        let prompt = match &state.translate_js_prompt {
+            Some(p) => p.replace("{js_content}", js),
+            None => {
+                warn!(
+                    "[{}] translate_js prompt not found, using default",
+                    session_id
+                );
+                format!(
+                    "Translate the following JavaScript content from Vietnamese to English.\n\
                          Keep all JavaScript code intact. Only translate string literals and comments.\n\n\
                          {}\n\nReturn ONLY the translated JavaScript without explanation.",
-                        js
-                    )
-                }
-            };
+                    js
+                )
+            }
+        };
 
-            match translate_with_prompt(&api_key, &prompt).await {
-                Ok((translated, is_rate_limit)) => {
-                    if is_rate_limit {
-                        error!("[{}] Rate limit error while translating JS", session_id);
-                        state.rate_limit_stop = true;
-                        state.add_error("Rate limit error when translating JS");
-                        return Ok(state);
-                    }
-                    if let Some(content) = translated {
-                        info!(
-                            "[{}] JS translated successfully - {} chars",
-                            session_id,
-                            content.len()
-                        );
-                        state.js_content_en = Some(content);
-                    }
+        match translate_with_prompt(&api_key, &prompt).await {
+            Ok((translated, is_rate_limit)) => {
+                if is_rate_limit {
+                    error!("[{}] Rate limit error while translating JS", session_id);
+                    state.rate_limit_stop = true;
+                    state.add_error("Rate limit error when translating JS");
+                    return Ok(state);
                 }
-                Err(e) => {
-                    warn!("[{}] JS translation failed: {}", session_id, e);
+                if let Some(content) = translated {
+                    info!(
+                        "[{}] JS translated successfully - {} chars",
+                        session_id,
+                        content.len()
+                    );
+                    state.js_content_en = Some(content);
                 }
+            }
+            Err(e) => {
+                warn!("[{}] JS translation failed: {}", session_id, e);
             }
         }
     }

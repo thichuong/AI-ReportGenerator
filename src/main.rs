@@ -2,7 +2,7 @@
 //!
 //! Starts the Axum web server and auto report scheduler.
 
-use ai_report_generator::{create_pool, create_router, db, start_auto_report_scheduler, AppState};
+use ai_report_generator::{AppState, create_pool, create_router, db, start_auto_report_scheduler};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;

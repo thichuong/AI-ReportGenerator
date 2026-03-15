@@ -8,7 +8,7 @@ pub mod routing;
 pub mod state;
 
 use crate::db::models::{CryptoReport, NewCryptoReport};
-use routing::{should_retry_interface_or_continue, should_retry_or_continue, RoutingDecision};
+use routing::{RoutingDecision, should_retry_interface_or_continue, should_retry_or_continue};
 use sqlx::PgPool;
 use state::ReportState;
 use tracing::{error, info};

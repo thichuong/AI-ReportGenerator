@@ -7,8 +7,8 @@ pub mod handlers;
 pub mod progress;
 
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use sqlx::PgPool;
 use std::sync::Arc;
