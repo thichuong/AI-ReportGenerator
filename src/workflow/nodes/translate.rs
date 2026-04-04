@@ -43,7 +43,7 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
             }
         };
 
-        match translate_with_prompt(&api_key, &prompt).await {
+        match translate_with_prompt(&api_key, &prompt, session_id, "html").await {
             Ok((translated, is_rate_limit)) => {
                 if is_rate_limit {
                     error!("[{}] Rate limit error while translating HTML", session_id);
@@ -86,7 +86,7 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
             }
         };
 
-        match translate_with_prompt(&api_key, &prompt).await {
+        match translate_with_prompt(&api_key, &prompt, session_id, "js").await {
             Ok((translated, is_rate_limit)) => {
                 if is_rate_limit {
                     error!("[{}] Rate limit error while translating JS", session_id);
@@ -119,11 +119,13 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
 async fn translate_with_prompt(
     api_key: &str,
     prompt: &str,
+    session_id: &str,
+    suffix: &str,
 ) -> Result<(Option<String>, bool), anyhow::Error> {
     let client = reqwest::Client::new();
 
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
         api_key
     );
 
@@ -135,10 +137,9 @@ async fn translate_with_prompt(
         }],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 65536,
+            "maxOutputTokens": 32768,
             "thinkingConfig": {
-                "includeThoughts": false,
-                "thinkingBudget": 2048
+                "thinkingLevel": "MINIMAL"
             }
         }
     });
@@ -168,10 +169,43 @@ async fn translate_with_prompt(
     }
 
     let json: serde_json::Value = response.json().await?;
+    
+    // DEBUG: Save full JSON to file
+    let debug_enabled = std::env::var("DEBUG")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
 
-    // Extract and clean text
-    if let Some(text) = json["candidates"][0]["content"]["parts"][0]["text"].as_str() {
-        let mut cleaned = text.trim().to_string();
+    if debug_enabled {
+        let debug_json_path = format!("debug_translate_{}_full_{}.json", suffix, session_id);
+        if let Err(e) = std::fs::write(&debug_json_path, serde_json::to_string_pretty(&json).unwrap_or_default()) {
+            error!("[{}] Failed to write debug JSON: {}", session_id, e);
+        } else {
+            info!("[{}] Saved full debug JSON to {}", session_id, debug_json_path);
+        }
+    }
+    
+    // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
+    let mut full_text = String::new();
+    if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
+        for part in parts {
+            if let Some(part_text) = part["text"].as_str() {
+                full_text.push_str(part_text);
+            }
+        }
+    }
+
+    if !full_text.is_empty() {
+        // DEBUG: Save response to file
+        if debug_enabled {
+            let debug_path = format!("debug_translate_{}_{}.txt", suffix, session_id);
+            if let Err(e) = std::fs::write(&debug_path, &full_text) {
+                error!("[{}] Failed to write debug file: {}", session_id, e);
+            } else {
+                info!("[{}] Saved debug response to {}", session_id, debug_path);
+            }
+        }
+
+        let mut cleaned = full_text.trim().to_string();
 
         // Remove markdown code blocks if present
         if cleaned.starts_with("```") {

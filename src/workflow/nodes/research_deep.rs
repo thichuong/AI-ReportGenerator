@@ -47,9 +47,23 @@ pub async fn research_deep(mut state: ReportState) -> Result<ReportState, anyhow
     };
 
     // Call Gemini API
-    match call_gemini_api(&state.api_key, &full_prompt).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id).await {
         Ok(response) => {
             info!("[{}] Research completed successfully", session_id);
+
+            // DEBUG: Save response to file
+            let debug_enabled = std::env::var("DEBUG")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false);
+
+            if debug_enabled {
+                let debug_path = format!("debug_research_{}.txt", session_id);
+                if let Err(e) = std::fs::write(&debug_path, &response) {
+                    error!("[{}] Failed to write debug file: {}", session_id, e);
+                } else {
+                    info!("[{}] Saved debug response to {}", session_id, debug_path);
+                }
+            }
             state.research_content = Some(response.clone());
 
             // Check for validation result
@@ -97,11 +111,11 @@ pub async fn research_deep(mut state: ReportState) -> Result<ReportState, anyhow
 }
 
 /// Calls Gemini API with the given prompt.
-async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::Error> {
+async fn call_gemini_api(api_key: &str, prompt: &str, session_id: &str) -> Result<String, anyhow::Error> {
     let client = reqwest::Client::new();
 
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
         api_key
     );
 
@@ -116,10 +130,9 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
         }],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 60000,
+            "maxOutputTokens": 32768,
             "thinkingConfig": {
-                "includeThoughts": false,
-                "thinkingBudget": 8192
+                "thinkingLevel": "HIGH"
             }
         }
     });
@@ -142,18 +155,41 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
     }
 
     let json: serde_json::Value = response.json().await?;
+    
+    // DEBUG: Save full JSON to file
+    let debug_enabled = std::env::var("DEBUG")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
 
-    // Extract text from response
-    let text = json["candidates"][0]["content"]["parts"][0]["text"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("Failed to extract text from API response"))?;
+    if debug_enabled {
+        let debug_json_path = format!("debug_research_full_{}.json", session_id);
+        if let Err(e) = std::fs::write(&debug_json_path, serde_json::to_string_pretty(&json).unwrap_or_default()) {
+            error!("[{}] Failed to write debug JSON: {}", session_id, e);
+        } else {
+            info!("[{}] Saved full debug JSON to {}", session_id, debug_json_path);
+        }
+    }
+    
+    // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
+    let mut full_text = String::new();
+    if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
+        for part in parts {
+            if let Some(part_text) = part["text"].as_str() {
+                full_text.push_str(part_text);
+            }
+        }
+    }
+
+    if full_text.is_empty() {
+        return Err(anyhow::anyhow!("Failed to extract text from AI response (empty or missing parts)"));
+    }
 
     // Parse validation result (simple check to match Python logic)
-    if text.contains("KẾT QUẢ KIỂM TRA: PASS") || text.contains("validation_result: PASS") {
+    if full_text.contains("KẾT QUẢ KIỂM TRA: PASS") || full_text.contains("validation_result: PASS") {
         // state.validation_result set in caller, but we return text here
     }
 
-    Ok(text.to_string())
+    Ok(full_text)
 }
 
 /// Checks if the error message indicates a rate limit.

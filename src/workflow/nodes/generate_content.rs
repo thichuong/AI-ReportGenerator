@@ -46,9 +46,24 @@ pub async fn generate_content(mut state: ReportState) -> Result<ReportState, any
     let full_prompt = prompt.replace("{content}", &research_content);
 
     // Call Gemini API
-    match call_gemini_api(&state.api_key, &full_prompt).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id).await {
         Ok(response) => {
             info!("[{}] Report content generated successfully", session_id);
+
+            // DEBUG: Save response to file
+            let debug_enabled = std::env::var("DEBUG")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false);
+
+            if debug_enabled {
+                let debug_path = format!("debug_generate_{}.txt", session_id);
+                if let Err(e) = std::fs::write(&debug_path, &response) {
+                    error!("[{}] Failed to write debug file: {}", session_id, e);
+                } else {
+                    info!("[{}] Saved debug response to {}", session_id, debug_path);
+                }
+            }
+
             state.report_content = Some(response);
             state.success = true;
         }
@@ -70,11 +85,11 @@ pub async fn generate_content(mut state: ReportState) -> Result<ReportState, any
 }
 
 /// Calls Gemini API with the given prompt.
-async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::Error> {
+async fn call_gemini_api(api_key: &str, prompt: &str, session_id: &str) -> Result<String, anyhow::Error> {
     let client = reqwest::Client::new();
 
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={}",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
         api_key
     );
 
@@ -86,10 +101,9 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
         }],
         "generationConfig": {
             "temperature": 0.5,
-            "maxOutputTokens": 25000,
+            "maxOutputTokens": 32768,
             "thinkingConfig": {
-                "includeThoughts": false,
-                "thinkingBudget": 4096
+                "thinkingLevel": "HIGH"
             }
         }
     });
@@ -112,12 +126,36 @@ async fn call_gemini_api(api_key: &str, prompt: &str) -> Result<String, anyhow::
     }
 
     let json: serde_json::Value = response.json().await?;
+    
+    // DEBUG: Save full JSON to file
+    let debug_enabled = std::env::var("DEBUG")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
 
-    let text = json["candidates"][0]["content"]["parts"][0]["text"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("Failed to extract text from API response"))?;
+    if debug_enabled {
+        let debug_json_path = format!("debug_generate_full_{}.json", session_id);
+        if let Err(e) = std::fs::write(&debug_json_path, serde_json::to_string_pretty(&json).unwrap_or_default()) {
+            error!("[{}] Failed to write debug JSON: {}", session_id, e);
+        } else {
+            info!("[{}] Saved full debug JSON to {}", session_id, debug_json_path);
+        }
+    }
+    
+    // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
+    let mut full_text = String::new();
+    if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
+        for part in parts {
+            if let Some(part_text) = part["text"].as_str() {
+                full_text.push_str(part_text);
+            }
+        }
+    }
 
-    Ok(text.to_string())
+    if full_text.is_empty() {
+        return Err(anyhow::anyhow!("Failed to extract text from AI response (empty or missing parts)"));
+    }
+
+    Ok(full_text)
 }
 
 /// Checks if the error message indicates a rate limit.
