@@ -1,18 +1,15 @@
 //! Validate report node
 //!
-//! Validates the research content quality.
-//! Equivalent to `app/services/workflow_nodes/validate_report.py`
+//! Validates the research content quality via AI Validator.
 
-use crate::workflow::state::ReportState;
-use regex::Regex;
-use tracing::{info, warn};
+use crate::workflow::{prompts, state::ReportState};
+use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
+use tracing::{info, warn, error};
 
 /// Validates the research report content.
-///
-/// Checks if the research content meets quality requirements.
 pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
-    info!("[{}] Step 3: Validate report", session_id);
+    info!("[{}] Step 3: Validate report via AI Validator", session_id);
 
     // Check rate limit flag
     if state.rate_limit_stop {
@@ -26,7 +23,7 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
 
     // Get research content
     let research_content = match &state.research_content {
-        Some(content) if !content.is_empty() => content,
+        Some(content) if !content.is_empty() => content.clone(),
         _ => {
             warn!("[{}] No research content to validate", session_id);
             state.validation_result = Some("FAIL".to_string());
@@ -35,128 +32,70 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
         }
     };
 
-    // Perform validation checks
-    let validation_result = check_report_validation(research_content);
+    let prompt = prompts::process_placeholders(prompts::report_validator::VALIDATOR_PROMPT);
+    let mut full_prompt = prompt.replace("{{REPORT_CONTENT}}", &research_content);
+    full_prompt = if let Some(ref data) = state.realtime_data {
+        full_prompt.replace("{{REAL_TIME_DATA}}", data)
+    } else {
+        full_prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No realtime data available for validation"}"#)
+    };
 
-    info!("[{}] Validation result: {}", session_id, validation_result);
-    state.validation_result = Some(validation_result);
-
-    // Update success status based on validation
-    if state.validation_result.as_deref() == Some("PASS") {
-        // Keep success=true (default/previous state check might be needed if false)
-    } else if state.validation_result.as_deref() == Some("FAIL") {
-        state.success = false;
+    // Call API with JSON format enabled
+    match call_gemini_api(&state.api_key, &full_prompt, session_id, "validator", false, true).await {
+        Ok(json_response) => {
+            info!("[{}] AI Validation query completed", session_id);
+            
+            // Clean up potentially malformed json (e.g. wrapped in ```json)
+            let cleaned_json = json_response.trim()
+                .trim_start_matches("```json")
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim();
+            
+            // Try to parse the JSON
+            let parsed: Result<serde_json::Value, _> = serde_json::from_str(cleaned_json);
+            match parsed {
+                Ok(val) => {
+                    let status = val.get("status")
+                                    .and_then(|s| s.as_str())
+                                    .unwrap_or("UNKNOWN")
+                                    .to_uppercase();
+                    let reasoning = val.get("reasoning")
+                                       .and_then(|r| r.as_str())
+                                       .unwrap_or("No reasoning provided");
+                                       
+                    info!("[{}] Validation Status: {}, Reasoning: {}", session_id, status, reasoning);
+                    state.validation_result = Some(status.clone());
+                    
+                    if status == "FAIL" {
+                        state.success = false;
+                        state.add_error(&format!("Validation failed: {}", reasoning));
+                    }
+                },
+                Err(e) => {
+                    warn!("[{}] Failed to parse validation JSON: {}, raw: {}", session_id, e, json_response);
+                    // Fallback using string matching just in case JSON parsing fails
+                    if json_response.to_uppercase().contains("\"PASS\"") {
+                        state.validation_result = Some("PASS".to_string());
+                    } else {
+                        state.validation_result = Some("FAIL".to_string());
+                        state.success = false;
+                        state.add_error("Validation JSON format error");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            let error_msg = format!("Validator API call failed: {}", e);
+            error!("[{}] {}", session_id, error_msg);
+            if is_rate_limit_error(&e.to_string()) {
+                state.rate_limit_stop = true;
+            }
+            state.validation_result = Some("FAIL".to_string());
+            state.add_error(&error_msg);
+            state.success = false;
+        }
     }
 
     Ok(state)
-}
-
-/// Checks report validation based on content quality.
-///
-/// Returns "PASS", "FAIL", or "UNKNOWN".
-fn check_report_validation(content: &str) -> String {
-    let content_lower = content.to_lowercase();
-
-    // Check for Vietnamese validation markers (match Python)
-    if content.contains("KẾT QUẢ KIỂM TRA: PASS") || content.contains("KẾT QUẢ KIỂM TRA:  PASS")
-    {
-        return "PASS".to_string();
-    }
-
-    if content.contains("KẾT QUẢ KIỂM TRA: FAIL") || content.contains("KẾT QUẢ KIỂM TRA:  FAIL")
-    {
-        return "FAIL".to_string();
-    }
-
-    // Check for explicit validation markers
-    if content_lower.contains("validation: pass")
-        || content_lower.contains("validation_result: pass")
-        || content_lower.contains("✅ pass")
-    {
-        return "PASS".to_string();
-    }
-
-    if content_lower.contains("validation: fail")
-        || content_lower.contains("validation_result: fail")
-        || content_lower.contains("❌ fail")
-    {
-        return "FAIL".to_string();
-    }
-
-    // Fallback quality validation (Match Python logic)
-    // 1. Length check (> 2000 chars roughly matches Python check)
-    if content.len() < 2000 {
-        return "FAIL".to_string();
-    }
-
-    // 2. Element checks
-    let mut quality_score = 0;
-
-    // has_btc
-    if content_lower.contains("bitcoin") || content_lower.contains("btc") {
-        quality_score += 1;
-    }
-
-    // has_analysis
-    if content_lower.contains("phân tích")
-        || content_lower.contains("analysis")
-        || content_lower.contains("thị trường")
-        || content_lower.contains("market")
-    {
-        quality_score += 1;
-    }
-
-    // has_numbers (regex)
-    if let Ok(re) = Regex::new(r"\d+\.?\d*\s*%|\$\d+")
-        && re.is_match(content)
-    {
-        quality_score += 1;
-    }
-
-    // has_fng
-    if content_lower.contains("fear")
-        || content_lower.contains("greed")
-        || content_lower.contains("sợ hãi")
-        || content_lower.contains("tham lam")
-    {
-        quality_score += 1;
-    }
-
-    // has_validation_table
-    if content.contains("Bảng Đối chiếu")
-        || content.contains("Validation Summary")
-        || content.contains("| Dữ liệu")
-        || content.contains("| BTC Price")
-    {
-        quality_score += 1;
-    }
-
-    if quality_score >= 4 {
-        return "PASS".to_string();
-    }
-
-    "FAIL".to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_validation_pass_explicit() {
-        let content = "Some content with Validation: PASS marker";
-        assert_eq!(check_report_validation(content), "PASS");
-    }
-
-    #[test]
-    fn test_validation_fail_short_content() {
-        let content = "Too short";
-        assert_eq!(check_report_validation(content), "FAIL");
-    }
-
-    #[test]
-    fn test_validation_pass_quality() {
-        let content = "Đây là bản phân tích thị trường BTC (Bitcoin) với dữ liệu chi tiết. Fear and Greed Index đang ở mức tham lam. Bảng Đối chiếu dữ liệu cho thấy giá đang tăng. ".repeat(40);
-        assert_eq!(check_report_validation(&content), "PASS");
-    }
 }

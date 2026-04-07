@@ -37,8 +37,24 @@ pub async fn run_workflow(
 
     // Research and validation loop
     loop {
-        // Step 2: Research deep
-        state = nodes::research_deep(state).await?;
+        // Step 2: Research Pipeline
+        state = nodes::research_tech(state).await?;
+        if !state.success {
+            error!("[{}] Tech research failed", session_id);
+            return Ok(state);
+        }
+
+        state = nodes::research_macro(state).await?;
+        if !state.success {
+            error!("[{}] Macro research failed", session_id);
+            return Ok(state);
+        }
+
+        state = nodes::report_writer(state).await?;
+        if !state.success {
+            error!("[{}] Report synthesis failed", session_id);
+            return Ok(state);
+        }
 
         // Step 3: Validate report
         state = nodes::validate_report(state).await?;

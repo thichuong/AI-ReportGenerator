@@ -5,7 +5,10 @@
 
 pub mod interface;
 pub mod report;
-pub mod research;
+pub mod report_validator;
+pub mod report_writer;
+pub mod research_macro;
+pub mod research_tech;
 pub mod translation;
 
 use chrono::Utc;

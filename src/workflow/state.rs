@@ -19,6 +19,8 @@ pub struct ReportState {
     pub current_attempt: u32,
 
     // Generated contents
+    pub tech_analysis_content: Option<String>,
+    pub macro_analysis_content: Option<String>,
     pub research_content: Option<String>,
     pub report_content: Option<String>,
     pub interface_content: Option<String>,
@@ -61,6 +63,8 @@ impl ReportState {
             max_attempts,
             current_attempt: 0,
 
+            tech_analysis_content: None,
+            macro_analysis_content: None,
             research_content: None,
             report_content: None,
             interface_content: None,
