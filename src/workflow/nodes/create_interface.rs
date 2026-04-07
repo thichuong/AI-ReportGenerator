@@ -3,7 +3,7 @@
 //! Creates HTML/CSS/JS interface for the report.
 //! Equivalent to `app/services/workflow_nodes/create_interface.py`
 
-use crate::workflow::state::ReportState;
+use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
 /// Creates the HTML/CSS/JS interface for the report.
@@ -40,11 +40,8 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
         return Ok(state);
     }
 
-    // Get create_report prompt and append content
-    let create_report_prompt = state
-        .create_report_prompt
-        .as_deref()
-        .unwrap_or("Create HTML/CSS/JS interface for the following report:");
+    // Get create_report prompt (hardcoded)
+    let create_report_prompt = prompts::interface::CREATE_INTERFACE_PROMPT;
 
     let full_prompt = format!(
         "{}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{}",

@@ -3,7 +3,7 @@
 //! Performs deep research using Gemini AI.
 //! Equivalent to `app/services/workflow_nodes/research_deep.py`
 
-use crate::workflow::state::ReportState;
+use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
 /// Performs deep research using AI.
@@ -22,17 +22,8 @@ pub async fn research_deep(mut state: ReportState) -> Result<ReportState, anyhow
         return Ok(state);
     }
 
-    // Get the research prompt
-    let prompt = match &state.research_analysis_prompt {
-        Some(p) => p.clone(),
-        None => {
-            let error_msg = "Research prompt is missing";
-            error!("[{}] {}", session_id, error_msg);
-            state.add_error(error_msg);
-            state.success = false;
-            return Ok(state);
-        }
-    };
+    // Get the research prompt (hardcoded)
+    let prompt = prompts::process_placeholders(prompts::research::COMBINED_RESEARCH_PROMPT);
 
     // Build the full prompt with real-time data (inject via placeholder)
     let full_prompt = if let Some(ref data) = state.realtime_data {

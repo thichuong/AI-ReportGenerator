@@ -18,14 +18,6 @@ pub struct ReportState {
     /// Current attempt number
     pub current_attempt: u32,
 
-    // Prompts
-    pub research_analysis_prompt: Option<String>,
-    pub data_validation_prompt: Option<String>,
-    pub create_report_prompt: Option<String>,
-    pub generate_report_prompt: Option<String>,
-    pub translate_html_prompt: Option<String>,
-    pub translate_js_prompt: Option<String>,
-
     // Generated contents
     pub research_content: Option<String>,
     pub report_content: Option<String>,
@@ -68,13 +60,6 @@ impl ReportState {
             api_key: api_key.to_string(),
             max_attempts,
             current_attempt: 0,
-
-            research_analysis_prompt: None,
-            data_validation_prompt: None,
-            create_report_prompt: None,
-            generate_report_prompt: None,
-            translate_html_prompt: None,
-            translate_js_prompt: None,
 
             research_content: None,
             report_content: None,

@@ -3,14 +3,14 @@
 //! Generates the final report content from research.
 //! Equivalent to `app/services/workflow_nodes/generate_report_content.py`
 
-use crate::workflow::state::ReportState;
+use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
 /// Generates the report content from research.
 pub async fn generate_content(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 4: Generate report content", session_id);
-
+    
     // Check rate limit flag
     if state.rate_limit_stop {
         error!(
@@ -32,15 +32,8 @@ pub async fn generate_content(mut state: ReportState) -> Result<ReportState, any
         }
     };
 
-    // Get generate report prompt
-    let prompt = match &state.generate_report_prompt {
-        Some(p) => p.clone(),
-        None => {
-            // Use a default prompt if not set
-            "Generate a professional crypto market report based on the following research:\n{content}"
-                .to_string()
-        }
-    };
+    // Get generate report prompt (hardcoded)
+    let prompt = prompts::report::GENERATE_REPORT_PROMPT;
 
     // Build full prompt by replacing {content} placeholder
     let full_prompt = prompt.replace("{content}", &research_content);

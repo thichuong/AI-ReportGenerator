@@ -3,7 +3,7 @@
 //! Translates content to English.
 //! Equivalent to `app/services/workflow_nodes/translate_content.py`
 
-use crate::workflow::state::ReportState;
+use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
 /// Translates the report content to English.
@@ -27,21 +27,7 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
     if let Some(ref html) = state.html_content
         && !html.trim().is_empty()
     {
-        let prompt = match &state.translate_html_prompt {
-            Some(p) => p.replace("{content}", html),
-            None => {
-                warn!(
-                    "[{}] translate_html prompt not found, using default",
-                    session_id
-                );
-                format!(
-                    "Translate the following HTML content from Vietnamese to English.\n\
-                         Keep all HTML tags intact. Only translate the text content.\n\n\
-                         {}\n\nReturn ONLY the translated HTML without explanation.",
-                    html
-                )
-            }
-        };
+        let prompt = prompts::translation::TRANSLATE_HTML_PROMPT.replace("{content}", html);
 
         match translate_with_prompt(&api_key, &prompt, session_id, "html").await {
             Ok((translated, is_rate_limit)) => {
@@ -70,21 +56,7 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
     if let Some(ref js) = state.js_content
         && !js.trim().is_empty()
     {
-        let prompt = match &state.translate_js_prompt {
-            Some(p) => p.replace("{js_content}", js),
-            None => {
-                warn!(
-                    "[{}] translate_js prompt not found, using default",
-                    session_id
-                );
-                format!(
-                    "Translate the following JavaScript content from Vietnamese to English.\n\
-                         Keep all JavaScript code intact. Only translate string literals and comments.\n\n\
-                         {}\n\nReturn ONLY the translated JavaScript without explanation.",
-                    js
-                )
-            }
-        };
+        let prompt = prompts::translation::TRANSLATE_JS_PROMPT.replace("{js_content}", js);
 
         match translate_with_prompt(&api_key, &prompt, session_id, "js").await {
             Ok((translated, is_rate_limit)) => {

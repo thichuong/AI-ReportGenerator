@@ -4,6 +4,7 @@
 //! Equivalent to `app/services/report_workflow.py`
 
 pub mod nodes;
+pub mod prompts;
 pub mod routing;
 pub mod state;
 
