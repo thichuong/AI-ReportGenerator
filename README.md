@@ -1,201 +1,97 @@
-# AI Report Generator
+# AI Report Generator (Rust Edition)
 
-## Mô tả
-Ứng dụng AI để tạo báo cáo đầu tư tự động với FastAPI backend.
+## 📝 Description
+AI Report Generator is a high-performance application built with Rust and Axum for automating investment report generation. It integrates with Google Gemini AI to analyze market data and create comprehensive reports.
 
-## Cấu trúc dự án
-```
+## 🚀 Features
+- **Fast and Type-Safe**: Implemented in Rust using the Axum web framework.
+- **AI-Powered Analysis**: Leverages Google Gemini AI for intelligent content generation.
+- **Real-time Data Integration**: Fetches live market data from Redis Streams.
+- **Workflow Orchestration**: Automated multi-step report generation workflow.
+- **Built-in Scheduler**: Automated report generation at configurable intervals.
+- **Progress Tracking**: Real-time status updates for ongoing generation tasks.
+- **PostgreSQL Integration**: Persistent storage for generated reports.
+- **Modern Dashboard**: Built-in web interface for viewing and managing reports.
+
+## 📁 Project Structure
+```text
 AI-ReportGenerator/
-├── app/
-│   ├── __init__.py
-│   ├── db/
-│   │   ├── __init__.py
-│   │   └── session.py        # Logic quản lý database session
-│   ├── models/
-│   │   └── __init__.py       # Chứa các model SQLAlchemy
-│   ├── routers/
-│   │   ├── __init__.py
-│   │   └── articles.py       # APIRouter cho các tính năng về bài viết
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   └── article.py        # Pydantic schemas cho bài viết
-│   └── services/
-│       ├── __init__.py
-│       └── article_service.py # Chứa logic nghiệp vụ
-├── create_report/            # Module tạo báo cáo AI
-├── main.py                   # FastAPI application instance
-├── run.py                    # Điểm khởi chạy ứng dụng
-├── requirements.txt          # Dependencies
-├── Dockerfile                # File cấu hình Docker
-├── docker-compose.yml        # Docker Compose configuration
-└── .env.example              # File cấu hình môi trường mẫu
+├── src/
+│   ├── api/          # Axum handlers and request routing
+│   ├── db/           # PostgreSQL models and database logic
+│   ├── scheduler/    # Automated task scheduling
+│   ├── workflow/     # AI report generation logic and nodes
+│   ├── static/       # Frontend assets (HTML, CSS, JS)
+│   ├── main.rs       # Entry point
+│   └── lib.rs        # Core logic exports
+├── prompt_envs/      # AI prompts and template configurations
+├── Cargo.toml        # Rust dependencies and project metadata
+└── .env.example      # Environment configuration template
 ```
 
-## Cài đặt và chạy
+## 🛠️ Getting Started
 
-### 1. Cài đặt dependencies
-```bash
-pip install -r requirements.txt
-```
+### 1. Prerequisites
+- **Rust**: [Install Rust](https://www.rust-lang.org/tools/install) (stable version recommended)
+- **PostgreSQL**: Required for data storage.
+- **Redis**: Required for real-time market data integration.
 
-### 2. Cấu hình môi trường
+### 2. Installation
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd AI-ReportGenerator
+
+# Copy environment template
 cp .env.example .env
 ```
 
-### 3. Chạy ứng dụng
+### 3. Configuration
+Edit the `.env` file and provide your credentials:
+- `DATABASE_URL`: PostgreSQL connection string.
+- `GEMINI_API_KEY`: Your Google AI API key.
+- `REDIS_URL`: Redis server address.
+
+### 4. Running the Application
 ```bash
-python run.py
+# Run in development mode
+cargo run
+
+# Build for production
+cargo build --release
+./target/release/ai-report-generator
 ```
 
-Hoặc sử dụng uvicorn trực tiếp:
-```bash
-uvicorn main:app --reload
-```
+## 🌐 API Endpoints
 
-### 4. Docker Deployment (Khuyến nghị)
+### 📊 Report Generation
+- `POST /api/v1/generate-auto-report` - Start background report generation.
+- `GET /api/v1/progress/{session_id}` - Track the progress of a generation session.
+- `POST /api/v1/manual-generate` - Trigger an immediate, synchronous report generation.
 
-#### Quick Deploy
-```bash
-# Chạy script tự động deploy
-./deploy.sh
-```
+### 📈 Monitoring & Status
+- `GET /api/v1/scheduler/status` - Check the status of the auto-report scheduler.
+- `GET /api/v1/reports/latest` - Retrieve metadata for the most recently generated report.
+- `GET /health` - Application health check.
 
-#### Manual Docker Deploy
-```bash
-# Tạo thư mục cần thiết
-mkdir -p data logs
+### 🖥️ Dashboard
+- `GET /` - Redirects to the built-in web dashboard.
+- `GET /static/*` - Serves frontend assets.
 
-# Build và chạy với Docker Compose
-docker-compose up -d --build
+## 🚢 Deployment (CI/CD)
+The project includes a GitHub Actions workflow for automatic deployment to a Google Cloud VM.
 
-# Kiểm tra logs
-docker-compose logs -f
+### Configuration
+Set the following secrets in your GitHub repository:
+- `SSH_HOST`: VM Public IP.
+- `SSH_USER`: SSH username.
+- `SSH_KEY`: SSH private key.
+- `GCP_SA_KEY`: Google Cloud Service Account key (JSON).
+- `GCP_PROJECT`: GCP Project ID.
+- `GCP_VM_NAME`: Target VM Name.
+- `GCP_ZONE`: Target VM Zone.
 
-# Dừng services
-docker-compose down
-```
+The workflow will automatically build the release binary, transfer it via IAP, and restart the service on every push to the `main` branch.
 
-#### Railway Deployment
-```bash
-# Cài đặt Railway CLI
-npm install -g @railway/cli
-
-# Login và deploy
-railway login
-railway up
-```
-
-### 5. Development Mode
-```bash
-# Chạy development server
-python run.py
-
-# Hoặc với uvicorn
-uvicorn main:app --reload
-```
-
-## API Endpoints
-
-### Articles
-- `POST /api/v1/articles/` - Tạo bài viết mới
-- `GET /api/v1/articles/` - Lấy danh sách bài viết
-- `GET /api/v1/articles/{id}` - Lấy chi tiết bài viết
-- `PUT /api/v1/articles/{id}` - Cập nhật bài viết
-- `DELETE /api/v1/articles/{id}` - Xóa bài viết
-- `POST /api/v1/articles/{id}/publish` - Xuất bản bài viết
-
-### AI Reports
-- `POST /api/v1/generate-auto-report` - Tạo báo cáo tự động bằng AI
-- `GET /api/v1/progress/{session_id}` - Theo dõi tiến độ tạo báo cáo
-- `GET /api/v1/check-api-key` - Kiểm tra API key (debug)
-
-### System & Monitoring
-- `GET /` - Root endpoint
-- `GET /health` - Health check endpoint
-- `GET /docs` - Swagger documentation
-- `GET /redoc` - ReDoc documentation
-
-## 🔍 Monitoring & Health Checks
-
-### Local Development
-```bash
-# Health check
-curl http://localhost:8888/health
-
-# API documentation
-curl http://localhost:8888/docs
-```
-
-### Docker Deployment
-```bash
-# Container status
-docker-compose ps
-
-# Health check
-curl http://localhost:8888/health
-
-# View logs
-docker-compose logs -f ai-report-generator
-
-# Container stats
-docker stats
-```
-
-## Tính năng
-
-- ✅ FastAPI REST API
-- ✅ CRUD operations cho articles
-- ✅ AI-powered auto report generation với Gemini AI
-- ✅ LangGraph workflow cho tự động hóa
-- ✅ Progress tracking cho long-running tasks
-- ✅ Background task processing
-- ✅ Pydantic schemas cho validation
-- ✅ SQLAlchemy models
-- ✅ Service layer pattern
-- ✅ Database session management
-- ✅ Docker & Docker Compose support
-- ✅ Environment configuration
-- ✅ API documentation với Swagger/ReDoc
-
-## Công nghệ sử dụng
-
-- **FastAPI** - Web framework
-- **SQLAlchemy** - ORM
-- **Pydantic** - Data validation
-- **Uvicorn** - ASGI server
-- **SQLite** - Database (có thể thay đổi)
-- **Google Gemini AI** - AI content generation
-- **LangChain & LangGraph** - AI workflow orchestration
-- **Beautiful Soup** - HTML parsing
-- **Requests** - HTTP client
-
-## Truy cập API Documentation
-
-Sau khi chạy ứng dụng, bạn có thể truy cập:
-- **Swagger UI:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
-
-## License
-
-Dự án này được phát hành dưới **Apache License 2.0**. Xem file [LICENSE](LICENSE) để biết chi tiết.
-
-## Rust Google VM Deployment (CI/CD)
-
-Dự án có workflow tự động build và deploy ứng dụng Rust lên Google VM.
-
-### Cấu hình GitHub Secrets
-
-Để workflow hoạt động, bạn cần cấu hình các secrets sau trong phần **Settings > Secrets and variables > Actions** của repository:
-
-- `SSH_HOST`: Địa chỉ IP public của Google VM.
-- `SSH_USER`: Username SSH (ví dụ: `thichuong`).
-- `SSH_KEY`: SSH private key để truy cập VM.
-
-### Workflow hoạt động như thế nào?
-
-1.  Mỗi khi có commit lên nhánh `main`, workflow `.github/workflows/rust-cd.yml` sẽ được kích hoạt.
-2.  Mã nguồn Rust sẽ được build với profile `--release`.
-3.  File binary `ai-report-generator` sẽ được copy vào thư mục `~/AI-ReportGenerator/` trên máy chủ Google VM.
-4.  Ứng dụng sẽ được **khởi động lại tự động** (stop process cũ, start process mới chạy nền).
-5.  Logs sẽ được lưu tại `~/AI-ReportGenerator/app.log`.
+## 📄 License
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.

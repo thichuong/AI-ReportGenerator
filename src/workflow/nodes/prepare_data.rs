@@ -1,7 +1,4 @@
-//! Prepare data node
-//!
-//! Initializes data and reads prompts from environment or file fallback.
-//! Equivalent to `app/services/workflow_nodes/prepare_data.py`
+//! Equivalent to the previous Python implementation in `app/`.
 
 use crate::workflow::state::ReportState;
 use chrono::Utc;
@@ -156,9 +153,9 @@ fn process_prompt_placeholders(content: &str) -> String {
 /// Reads CSS :root content from colors.css file.
 fn read_css_root() -> Option<String> {
     let possible_paths = vec![
-        "app/static/css/colors.css",
+        "src/static/css/colors.css",
         "prompt_envs/colors.css",
-        "../app/static/css/colors.css",
+        "../src/static/css/colors.css",
     ];
 
     let regex = Regex::new(r":root\s*\{([^}]+)\}").expect("Static regex should be valid");
