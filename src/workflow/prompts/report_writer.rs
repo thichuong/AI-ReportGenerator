@@ -24,9 +24,9 @@ pub const WRITER_PROMPT: &str = r#"# 📝 Trình Tổng Hợp Báo Cáo Research
 ## 📋 YÊU CẦU ĐẦU RA (OUTPUT FORMAT):
 Viết một báo cáo duy nhất bằng tiếng Việt chuẩn (chỉ xuất ra Markdown, không giải thích gì thêm) theo cấu trúc: Tính toán sao cho trôi chảy, tuyệt đối không bị lặp lại các ý.
 
-### 1. 📈 Tóm tắt báo cáo (Executive Summary)
 - Nêu bật trạng thái giá BTC hiện tại (so khớp chính xác với REAL-TIME DATA).
 - Các ý chính quan trọng nhất trong 24h qua.
+- **Khuyến nghị chiến lược đầu tư nhanh.**
 
 ### 2. 🧠 Tâm lý thị trường & Tin tức (Sentiment & News)
 - Kết hợp thông tin từ chỉ số F&G Index, các tin tức nóng (SEC, hack, quy định) và phản ứng của cộng đồng.
@@ -41,7 +41,7 @@ Viết một báo cáo duy nhất bằng tiếng Việt chuẩn (chỉ xuất ra
 ### 5. 📅 Sự kiện sắp tới (Upcoming Events)
 - Các sự kiện/tin tức quan trọng trong tuần tới có khả năng làm biến động giá mạnh.
 
-### 6. 🔮 Kết luận & Kịch bản (Outlook)
 - Triển vọng Ngắn hạn (Vài ngày - 1 Tuần).
 - Các kịch bản có thể xảy ra (Tăng/Giảm/Đi ngang) kèm điều kiện kích hoạt.
+- **Khuyến nghị chiến lược giao dịch và quản trị rủi ro chi tiết.**
 "#;

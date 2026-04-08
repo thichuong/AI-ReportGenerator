@@ -16,7 +16,7 @@ pub async fn research_macro(mut state: ReportState) -> Result<ReportState, anyho
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemini_api(&state.api_key, &full_prompt, session_id, "macro", true, false).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id, "macro", true, false, None).await {
         Ok(response) => {
             info!("[{}] Macro research completed", session_id);
             state.macro_analysis_content = Some(response);

@@ -22,13 +22,8 @@ Bạn PHẢI trả về 3 khối mã riêng biệt và đầy đủ, được ba
 2.  Một khối mã ````css`...````
 3.  Một khối mã ````javascript`...````
 
-## 4. Quy tắc xử lý nội dung
-
--   **Quan trọng:** Khi xử lý nội dung nguồn (ví dụ từ file Word, text), phải **loại bỏ hoàn toàn** tất cả các thẻ đánh dấu trích dẫn như ``, `[1]`, `[2]`, ``, v.v.
-
 ### **TÓM TẮT VÀ NHẤN MẠNH:**
 - **KHÔNG BỎ SÓT** thông tin quan trọng từ nội dung gốc
-- **Tóm tắt súc tích** nhưng giữ đầy đủ: chỉ số, số liệu, phân tích, dự đoán, khuyến nghị
 - **Trích xuất và nhấn mạnh** chi tiết kỹ thuật quan trọng
 - **Làm nổi bật** tóm tắt, kết luận, điểm nhấn với HTML formatting
 - **Ưu tiên bảng** (`<table>`) cho dữ liệu có cấu trúc
@@ -405,8 +400,7 @@ function initializeBTCDominance_report() {
 }
 
 function initializeFearGreedGauge_report() {
-    const lang = language
-    const id = lang === 'fear-greed-gauge-container';
+    const id  = 'fear-greed-gauge-container';
     const container = document.getElementById(id);
     if (!container) return;
 

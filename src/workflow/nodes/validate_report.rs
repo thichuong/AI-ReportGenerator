@@ -41,7 +41,7 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
     };
 
     // Call API with JSON format enabled
-    match call_gemini_api(&state.api_key, &full_prompt, session_id, "validator", false, true).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id, "validator", false, true, None).await {
         Ok(json_response) => {
             info!("[{}] AI Validation query completed", session_id);
             

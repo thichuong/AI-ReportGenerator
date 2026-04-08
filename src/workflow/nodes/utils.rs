@@ -1,19 +1,58 @@
 //! Utility functions for workflow nodes
 use tracing::{error, info};
+use std::sync::OnceLock;
+
+static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn get_client() -> &'static reqwest::Client {
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .expect("Failed to create reqwest client")
+    })
+}
+
+/// Optional API configuration overrides
+pub struct ApiConfig {
+    pub temperature: f64,
+    pub thinking_level: String,
+    pub max_output_tokens: u32,
+}
+
+impl Default for ApiConfig {
+    fn default() -> Self {
+        Self {
+            temperature: 0.3,
+            thinking_level: "HIGH".to_string(),
+            max_output_tokens: 32768,
+        }
+    }
+}
 
 /// Calls Gemini API with the given prompt.
-pub async fn call_gemini_api(api_key: &str, prompt: &str, session_id: &str, node_name: &str, enable_search: bool, json_mode: bool) -> Result<String, anyhow::Error> {
-    let client = reqwest::Client::new();
+pub async fn call_gemini_api(
+    api_key: &str,
+    prompt: &str,
+    session_id: &str,
+    node_name: &str,
+    enable_search: bool,
+    json_mode: bool,
+    config_override: Option<ApiConfig>,
+) -> Result<String, anyhow::Error> {
+    let client = get_client();
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
         api_key
     );
 
+    let config_val = config_override.unwrap_or_default();
+
     let mut config = serde_json::json!({
-        "temperature": 0.3,
-        "maxOutputTokens": 32768,
+        "temperature": config_val.temperature,
+        "maxOutputTokens": config_val.max_output_tokens,
         "thinkingConfig": {
-            "thinkingLevel": "HIGH"
+            "thinkingLevel": config_val.thinking_level
         }
     });
 

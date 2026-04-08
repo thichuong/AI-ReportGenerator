@@ -16,7 +16,7 @@ pub async fn research_tech(mut state: ReportState) -> Result<ReportState, anyhow
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemini_api(&state.api_key, &full_prompt, session_id, "tech", true, false).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id, "tech", true, false, None).await {
         Ok(response) => {
             info!("[{}] Tech research completed", session_id);
             state.tech_analysis_content = Some(response);

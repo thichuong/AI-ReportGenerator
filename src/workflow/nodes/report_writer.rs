@@ -23,7 +23,7 @@ pub async fn report_writer(mut state: ReportState) -> Result<ReportState, anyhow
     };
 
     // No google search needed for the synthesizer
-    match call_gemini_api(&state.api_key, &full_prompt, session_id, "writer", false, false).await {
+    match call_gemini_api(&state.api_key, &full_prompt, session_id, "writer", false, false, None).await {
         Ok(response) => {
             info!("[{}] Report synthesis completed", session_id);
             // Assign to research_content to maintain compatibility with downstream nodes
