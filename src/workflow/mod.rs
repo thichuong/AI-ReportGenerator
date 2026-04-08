@@ -81,15 +81,12 @@ pub async fn run_workflow(
         }
     }
 
-    // Step 4: Generate report content
-    state = nodes::generate_content(state).await?;
-
-    // Interface creation loop
+    // Step 4: Create interface loop
     loop {
-        // Step 5: Create interface
+        // Step 4.1: Create interface
         state = nodes::create_interface(state).await?;
 
-        // Step 6: Extract code
+        // Step 4.2: Extract code
         state = nodes::extract_code(state).await?;
 
         match should_retry_interface_or_continue(&state) {
@@ -113,10 +110,10 @@ pub async fn run_workflow(
         }
     }
 
-    // Step 7: Translate content
+    // Step 5: Translate content
     state = nodes::translate(state).await?;
 
-    // Step 8: Save to database
+    // Step 6: Save to database
     state = save_to_database(pool, state).await?;
 
     info!(

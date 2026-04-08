@@ -4,7 +4,6 @@
 //! Previously loaded from .md files in prompt_envs/.
 
 pub mod interface;
-pub mod report;
 pub mod report_validator;
 pub mod report_writer;
 pub mod research_macro;

@@ -28,14 +28,20 @@ Viết một báo cáo duy nhất bằng tiếng Việt chuẩn (chỉ xuất ra
 - Nêu bật trạng thái giá BTC hiện tại (so khớp chính xác với REAL-TIME DATA).
 - Các ý chính quan trọng nhất trong 24h qua.
 
-### 2. 🧠 Phân tích Tâm lý & Vĩ Mô
-- Kết hợp thông tin từ chỉ số F&G Index, thông tin Vĩ mô (Fed, Lãi suất, Tin tức quy định).
+### 2. 🧠 Tâm lý thị trường & Tin tức (Sentiment & News)
+- Kết hợp thông tin từ chỉ số F&G Index, các tin tức nóng (SEC, hack, quy định) và phản ứng của cộng đồng.
 
 ### 3. 📊 Phân tích Kỹ thuật, ETF & Dòng tiền On-chain
 - Nêu rõ tình trạng kỹ thuật, mức hỗ trợ/kháng cự.
 - Chuyển động dòng tiền (ETF) và hoạt động của cá voi.
 
-### 4. 🔮 Kết luận & Kịch bản (Outlook)
+### 4. 🌍 Kinh tế Vĩ mô (Macroeconomics)
+- Các quyết định của Fed, số liệu CPI/PCE, DXY và tác động của chúng đối với thị trường Crypto.
+
+### 5. 📅 Sự kiện sắp tới (Upcoming Events)
+- Các sự kiện/tin tức quan trọng trong tuần tới có khả năng làm biến động giá mạnh.
+
+### 6. 🔮 Kết luận & Kịch bản (Outlook)
 - Triển vọng Ngắn hạn (Vài ngày - 1 Tuần).
 - Các kịch bản có thể xảy ra (Tăng/Giảm/Đi ngang) kèm điều kiện kích hoạt.
 "#;

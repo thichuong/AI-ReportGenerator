@@ -5,7 +5,6 @@
 
 mod create_interface;
 mod extract_code;
-mod generate_content;
 mod prepare_data;
 mod report_writer;
 mod research_macro;
@@ -16,7 +15,6 @@ mod validate_report;
 
 pub use create_interface::create_interface;
 pub use extract_code::extract_code;
-pub use generate_content::generate_content;
 pub use prepare_data::prepare_data;
 pub use report_writer::report_writer;
 pub use research_macro::research_macro;
