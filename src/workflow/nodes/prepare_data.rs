@@ -2,8 +2,8 @@
 
 use crate::workflow::state::ReportState;
 use multi_tier_cache::StreamingBackend;
-use tracing::{error, info, warn};
 use std::env;
+use tracing::{error, info, warn};
 
 /// Prepares data and initializes the workflow state.
 ///

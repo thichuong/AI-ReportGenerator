@@ -1,6 +1,7 @@
 //! Utility functions for workflow nodes
-use tracing::{error, info};
+use regex::Regex;
 use std::sync::OnceLock;
+use tracing::{error, info};
 
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
@@ -59,7 +60,8 @@ pub async fn call_gemini_api(
     if json_mode {
         config["responseMimeType"] = serde_json::Value::String("application/json".to_string());
         // For JSON mode, lower temperature to reduce hallucination
-        config["temperature"] = serde_json::Value::Number(serde_json::Number::from_f64(0.1).unwrap());
+        config["temperature"] =
+            serde_json::Value::Number(serde_json::Number::from_f64(0.1).unwrap());
     }
 
     let mut body = serde_json::json!({
@@ -91,20 +93,26 @@ pub async fn call_gemini_api(
     }
 
     let json: serde_json::Value = response.json().await?;
-    
+
     let debug_enabled = std::env::var("DEBUG")
         .map(|v| v.to_lowercase() == "true")
         .unwrap_or(false);
 
     if debug_enabled {
         let debug_json_path = format!("debug_{}_full_{}.json", node_name, session_id);
-        if let Err(e) = std::fs::write(&debug_json_path, serde_json::to_string_pretty(&json).unwrap_or_default()) {
+        if let Err(e) = std::fs::write(
+            &debug_json_path,
+            serde_json::to_string_pretty(&json).unwrap_or_default(),
+        ) {
             error!("[{}] Failed to write debug JSON: {}", session_id, e);
         } else {
-            info!("[{}] Saved full debug JSON to {}", session_id, debug_json_path);
+            info!(
+                "[{}] Saved full debug JSON to {}",
+                session_id, debug_json_path
+            );
         }
     }
-    
+
     let mut full_text = String::new();
     if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
         for part in parts {
@@ -128,4 +136,53 @@ pub fn is_rate_limit_error(error: &str) -> bool {
         || error_lower.contains("rate limit")
         || error_lower.contains("quota")
         || error_lower.contains("resource exhausted")
+}
+
+/// Processes content to convert common symbols to MathJax/LaTeX equivalents.
+pub fn process_mathjax(content: &str) -> String {
+    let mut result = content.to_string();
+
+    // Pass 1: Standard Symbol Normalization (MathJax format to HTML/Icons)
+
+    // Pass 2: Standard Symbol Normalization (Single symbols to HTML/Icons)
+    let final_symbols = [
+        (
+            r"\$\s*\\rightarrow\s*\$",
+            r#"<i class="fas fa-arrow-right mx-1"></i>"#,
+        ),
+        (
+            r"\$\s*\\leftarrow\s*\$",
+            r#"<i class="fas fa-arrow-left mx-1"></i>"#,
+        ),
+        (
+            r"\$\s*\\Rightarrow\s*\$",
+            r#"<i class="fas fa-arrow-right mx-1"></i>"#,
+        ),
+        (
+            r"\$\s*\\Leftarrow\s*\$",
+            r#"<i class="fas fa-arrow-left mx-1"></i>"#,
+        ),
+        (
+            r"\$\s*\\uparrow\s*\$",
+            r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
+        ),
+        (
+            r"\$\s*\\downarrow\s*\$",
+            r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
+        ),
+        (r"\$\s*\\pm\s*\$", "±"),
+        (r"\$\s*\\ge(q)?\s*\$", "≥"),
+        (r"\$\s*\\le(q)?\s*\$", "≤"),
+        (r"\$\s*\\approx\s*\$", "≈"),
+        (r"\$\s*\\dots\s*\$", "…"),
+        (r"\$\s*\\text\{([^}]+)\}\s*\$", "$1"), // Strip \text{...} wrappers
+    ];
+
+    for (pat, rep) in final_symbols {
+        if let Ok(re) = Regex::new(pat) {
+            result = re.replace_all(&result, rep).to_string();
+        }
+    }
+
+    result
 }

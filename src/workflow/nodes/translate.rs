@@ -3,6 +3,7 @@
 //! Translates content to English.
 //! Equivalent to `app/services/workflow_nodes/translate_content.py`
 
+use crate::workflow::nodes::utils::process_mathjax;
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
@@ -81,6 +82,14 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
         }
     }
 
+    // Apply MathJax processing after translation to save tokens
+    if let Some(ref html) = state.html_content {
+        state.html_content = Some(process_mathjax(html));
+    }
+    if let Some(ref html_en) = state.html_content_en {
+        state.html_content_en = Some(process_mathjax(html_en));
+    }
+
     info!("[{}] Translation completed", session_id);
     state.success = true;
     Ok(state)
@@ -141,7 +150,7 @@ async fn translate_with_prompt(
     }
 
     let json: serde_json::Value = response.json().await?;
-    
+
     // DEBUG: Save full JSON to file
     let debug_enabled = std::env::var("DEBUG")
         .map(|v| v.to_lowercase() == "true")
@@ -149,13 +158,19 @@ async fn translate_with_prompt(
 
     if debug_enabled {
         let debug_json_path = format!("debug_translate_{}_full_{}.json", suffix, session_id);
-        if let Err(e) = std::fs::write(&debug_json_path, serde_json::to_string_pretty(&json).unwrap_or_default()) {
+        if let Err(e) = std::fs::write(
+            &debug_json_path,
+            serde_json::to_string_pretty(&json).unwrap_or_default(),
+        ) {
             error!("[{}] Failed to write debug JSON: {}", session_id, e);
         } else {
-            info!("[{}] Saved full debug JSON to {}", session_id, debug_json_path);
+            info!(
+                "[{}] Saved full debug JSON to {}",
+                session_id, debug_json_path
+            );
         }
     }
-    
+
     // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
     let mut full_text = String::new();
     if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {

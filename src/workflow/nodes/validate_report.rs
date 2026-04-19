@@ -2,9 +2,9 @@
 //!
 //! Validates the research content quality via AI Validator.
 
-use crate::workflow::{prompts, state::ReportState};
 use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
-use tracing::{info, warn, error};
+use crate::workflow::{prompts, state::ReportState};
+use tracing::{error, info, warn};
 
 /// Validates the research report content.
 pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
@@ -37,43 +37,65 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
     full_prompt = if let Some(ref data) = state.realtime_data {
         full_prompt.replace("{{REAL_TIME_DATA}}", data)
     } else {
-        full_prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No realtime data available for validation"}"#)
+        full_prompt.replace(
+            "{{REAL_TIME_DATA}}",
+            r#"{"notice": "No realtime data available for validation"}"#,
+        )
     };
 
     // Call API with JSON format enabled
-    match call_gemini_api(&state.api_key, &full_prompt, session_id, "validator", false, true, None).await {
+    match call_gemini_api(
+        &state.api_key,
+        &full_prompt,
+        session_id,
+        "validator",
+        false,
+        true,
+        None,
+    )
+    .await
+    {
         Ok(json_response) => {
             info!("[{}] AI Validation query completed", session_id);
-            
+
             // Clean up potentially malformed json (e.g. wrapped in ```json)
-            let cleaned_json = json_response.trim()
+            let cleaned_json = json_response
+                .trim()
                 .trim_start_matches("```json")
                 .trim_start_matches("```")
                 .trim_end_matches("```")
                 .trim();
-            
+
             // Try to parse the JSON
             let parsed: Result<serde_json::Value, _> = serde_json::from_str(cleaned_json);
             match parsed {
                 Ok(val) => {
-                    let status = val.get("status")
-                                    .and_then(|s| s.as_str())
-                                    .unwrap_or("UNKNOWN")
-                                    .to_uppercase();
-                    let reasoning = val.get("reasoning")
-                                       .and_then(|r| r.as_str())
-                                       .unwrap_or("No reasoning provided");
-                                       
-                    info!("[{}] Validation Status: {}, Reasoning: {}", session_id, status, reasoning);
+                    let status = val
+                        .get("status")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("UNKNOWN")
+                        .to_uppercase();
+                    let reasoning = val
+                        .get("reasoning")
+                        .and_then(|r| r.as_str())
+                        .unwrap_or("No reasoning provided");
+
+                    info!(
+                        "[{}] Validation Status: {}, Reasoning: {}",
+                        session_id, status, reasoning
+                    );
                     state.validation_result = Some(status.clone());
-                    
+
                     if status == "FAIL" {
                         state.success = false;
                         state.add_error(&format!("Validation failed: {}", reasoning));
                     }
-                },
+                }
                 Err(e) => {
-                    warn!("[{}] Failed to parse validation JSON: {}, raw: {}", session_id, e, json_response);
+                    warn!(
+                        "[{}] Failed to parse validation JSON: {}, raw: {}",
+                        session_id, e, json_response
+                    );
                     // Fallback using string matching just in case JSON parsing fails
                     if json_response.to_uppercase().contains("\"PASS\"") {
                         state.validation_result = Some("PASS".to_string());
