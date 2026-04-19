@@ -152,51 +152,73 @@ pub fn is_rate_limit_error(error: &str) -> bool {
         || error_lower.contains("resource exhausted")
 }
 
+static MATHJAX_REPLACEMENTS: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
+
+fn get_mathjax_replacements() -> &'static Vec<(Regex, &'static str)> {
+    MATHJAX_REPLACEMENTS.get_or_init(|| {
+        vec![
+            (
+                Regex::new(r"\$\s*\\rightarrow\s*\$").expect("Invalid regex: rightarrow"),
+                r#"<i class="fas fa-arrow-right mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\leftarrow\s*\$").expect("Invalid regex: leftarrow"),
+                r#"<i class="fas fa-arrow-left mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\Rightarrow\s*\$").expect("Invalid regex: Rightarrow"),
+                r#"<i class="fas fa-arrow-right mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\Leftarrow\s*\$").expect("Invalid regex: Leftarrow"),
+                r#"<i class="fas fa-arrow-left mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\uparrow\s*\$").expect("Invalid regex: uparrow"),
+                r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\downarrow\s*\$").expect("Invalid regex: downarrow"),
+                r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\pm\s*\$").expect("Invalid regex: pm"),
+                "±",
+            ),
+            (
+                Regex::new(r"\$\s*\\ge(q)?\s*\$").expect("Invalid regex: ge"),
+                "≥",
+            ),
+            (
+                Regex::new(r"\$\s*\\le(q)?\s*\$").expect("Invalid regex: le"),
+                "≤",
+            ),
+            (
+                Regex::new(r"\$\s*\\approx\s*\$").expect("Invalid regex: approx"),
+                "≈",
+            ),
+            (
+                Regex::new(r"\$\s*\\dots\s*\$").expect("Invalid regex: dots"),
+                "…",
+            ),
+            (
+                Regex::new(r"\$\s*\\text\{([^}]+)\}\s*\$").expect("Invalid regex: text"),
+                "$1",
+            ),
+        ]
+    })
+}
+
 /// Processes content to convert common symbols to MathJax/LaTeX equivalents.
 pub fn process_mathjax(content: &str) -> String {
-    let mut result = content.to_string();
+    let replacements = get_mathjax_replacements();
+    let mut result = std::borrow::Cow::Borrowed(content);
 
-    // Pass 1: Standard Symbol Normalization (MathJax format to HTML/Icons)
-
-    // Pass 2: Standard Symbol Normalization (Single symbols to HTML/Icons)
-    let final_symbols = [
-        (
-            r"\$\s*\\rightarrow\s*\$",
-            r#"<i class="fas fa-arrow-right mx-1"></i>"#,
-        ),
-        (
-            r"\$\s*\\leftarrow\s*\$",
-            r#"<i class="fas fa-arrow-left mx-1"></i>"#,
-        ),
-        (
-            r"\$\s*\\Rightarrow\s*\$",
-            r#"<i class="fas fa-arrow-right mx-1"></i>"#,
-        ),
-        (
-            r"\$\s*\\Leftarrow\s*\$",
-            r#"<i class="fas fa-arrow-left mx-1"></i>"#,
-        ),
-        (
-            r"\$\s*\\uparrow\s*\$",
-            r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
-        ),
-        (
-            r"\$\s*\\downarrow\s*\$",
-            r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
-        ),
-        (r"\$\s*\\pm\s*\$", "±"),
-        (r"\$\s*\\ge(q)?\s*\$", "≥"),
-        (r"\$\s*\\le(q)?\s*\$", "≤"),
-        (r"\$\s*\\approx\s*\$", "≈"),
-        (r"\$\s*\\dots\s*\$", "…"),
-        (r"\$\s*\\text\{([^}]+)\}\s*\$", "$1"), // Strip \text{...} wrappers
-    ];
-
-    for (pat, rep) in final_symbols {
-        if let Ok(re) = Regex::new(pat) {
-            result = re.replace_all(&result, rep).to_string();
+    for (re, rep) in replacements {
+        if re.is_match(&result) {
+            result = std::borrow::Cow::Owned(re.replace_all(&result, *rep).into_owned());
         }
     }
 
-    result
+    result.into_owned()
 }
