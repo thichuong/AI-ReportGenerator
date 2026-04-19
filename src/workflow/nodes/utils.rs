@@ -75,58 +75,72 @@ pub async fn call_gemini_api(
         body["tools"] = serde_json::json!([{ "googleSearch": {} }]);
     }
 
-    let response = client
-        .post(&url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
+    let mut retries = 0;
+    const MAX_RETRIES: u32 = 3;
 
-    if !response.status().is_success() {
+    loop {
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await?;
+
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(anyhow::anyhow!(
-            "API request failed with status {}: {}",
-            status,
-            error_text
-        ));
-    }
 
-    let json: serde_json::Value = response.json().await?;
+        if status.is_success() {
+            let json: serde_json::Value = response.json().await?;
 
-    let debug_enabled = std::env::var("DEBUG")
-        .map(|v| v.to_lowercase() == "true")
-        .unwrap_or(false);
+            let debug_enabled = std::env::var("DEBUG")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false);
 
-    if debug_enabled {
-        let debug_json_path = format!("debug_{}_full_{}.json", node_name, session_id);
-        if let Err(e) = std::fs::write(
-            &debug_json_path,
-            serde_json::to_string_pretty(&json).unwrap_or_default(),
-        ) {
-            error!("[{}] Failed to write debug JSON: {}", session_id, e);
-        } else {
-            info!(
-                "[{}] Saved full debug JSON to {}",
-                session_id, debug_json_path
-            );
-        }
-    }
-
-    let mut full_text = String::new();
-    if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
-        for part in parts {
-            if let Some(part_text) = part["text"].as_str() {
-                full_text.push_str(part_text);
+            if debug_enabled {
+                let debug_json_path = format!("debug_{}_full_{}.json", node_name, session_id);
+                if let Err(e) = std::fs::write(
+                    &debug_json_path,
+                    serde_json::to_string_pretty(&json).unwrap_or_default(),
+                ) {
+                    error!("[{}] Failed to write debug JSON: {}", session_id, e);
+                } else {
+                    info!(
+                        "[{}] Saved full debug JSON to {}",
+                        session_id, debug_json_path
+                    );
+                }
             }
+
+            let mut full_text = String::new();
+            if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
+                for part in parts {
+                    if let Some(part_text) = part["text"].as_str() {
+                        full_text.push_str(part_text);
+                    }
+                }
+            }
+
+            if full_text.is_empty() {
+                return Err(anyhow::anyhow!("Failed to extract text from AI response"));
+            }
+
+            return Ok(full_text);
+        } else if status.as_u16() == 500 && retries < MAX_RETRIES {
+            retries += 1;
+            error!(
+                "[{}] Gemini API 500 Internal Server Error (Attempt {}/{}). Retrying in 5s...",
+                session_id, retries, MAX_RETRIES
+            );
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            continue;
+        } else {
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(anyhow::anyhow!(
+                "API request failed with status {}: {}",
+                status,
+                error_text
+            ));
         }
     }
-
-    if full_text.is_empty() {
-        return Err(anyhow::anyhow!("Failed to extract text from AI response"));
-    }
-
-    Ok(full_text)
 }
 
 /// Checks if the error message indicates a rate limit.
