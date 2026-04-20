@@ -8,6 +8,12 @@ use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
 /// Translates the report content to English.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The translation API fails for both HTML and JS (non-rate-limit errors).
+/// - State transitions fail.
 pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 7: Translate content", session_id);
@@ -96,7 +102,7 @@ pub async fn translate(mut state: ReportState) -> Result<ReportState, anyhow::Er
 }
 
 /// Translates text using the given prompt.
-/// Returns (Option<translated_content>, is_rate_limit_error)
+/// Returns (Option<`translated_content`>, `is_rate_limit_error`)
 async fn translate_with_prompt(
     api_key: &str,
     prompt: &str,
@@ -106,8 +112,7 @@ async fn translate_with_prompt(
     let client = reqwest::Client::new();
 
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
-        api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
     );
 
     let body = serde_json::json!({
@@ -143,9 +148,7 @@ async fn translate_with_prompt(
         }
 
         return Err(anyhow::anyhow!(
-            "Translation API failed with status {}: {}",
-            status,
-            error_text
+            "Translation API failed with status {status}: {error_text}"
         ));
     }
 
@@ -157,7 +160,7 @@ async fn translate_with_prompt(
         .unwrap_or(false);
 
     if debug_enabled {
-        let debug_json_path = format!("debug_translate_{}_full_{}.json", suffix, session_id);
+        let debug_json_path = format!("debug_translate_{suffix}_full_{session_id}.json");
         if let Err(e) = std::fs::write(
             &debug_json_path,
             serde_json::to_string_pretty(&json).unwrap_or_default(),
@@ -173,9 +176,15 @@ async fn translate_with_prompt(
 
     // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
     let mut full_text = String::new();
-    if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
-        for part in parts {
-            if let Some(part_text) = part["text"].as_str() {
+    let parts = json.get("candidates")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("content"))
+        .and_then(|c| c.get("parts"))
+        .and_then(|p| p.as_array());
+
+    if let Some(parts_arr) = parts {
+        for part in parts_arr {
+            if let Some(part_text) = part.get("text").and_then(|t| t.as_str()) {
                 full_text.push_str(part_text);
             }
         }
@@ -184,7 +193,7 @@ async fn translate_with_prompt(
     if !full_text.is_empty() {
         // DEBUG: Save response to file
         if debug_enabled {
-            let debug_path = format!("debug_translate_{}_{}.txt", suffix, session_id);
+            let debug_path = format!("debug_translate_{suffix}_{session_id}.txt");
             if let Err(e) = std::fs::write(&debug_path, &full_text) {
                 error!("[{}] Failed to write debug file: {}", session_id, e);
             } else {
@@ -197,8 +206,10 @@ async fn translate_with_prompt(
         // Remove markdown code blocks if present
         if cleaned.starts_with("```") {
             let lines: Vec<&str> = cleaned.lines().collect();
-            if lines.len() > 2 {
-                cleaned = lines[1..lines.len() - 1].join("\n");
+            if lines.len() >= 3
+                && let Some(middle) = lines.get(1..lines.len() - 1)
+            {
+                cleaned = middle.join("\n");
             }
         }
 

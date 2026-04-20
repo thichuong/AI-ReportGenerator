@@ -18,6 +18,10 @@ use uuid::Uuid;
 /// Runs the complete report generation workflow.
 ///
 /// This is equivalent to Python's `generate_auto_research_report_langgraph_v2`.
+///
+/// # Errors
+///
+/// Returns an error if any of the mandatory workflow nodes fail critically.
 pub async fn run_workflow(
     pool: &PgPool,
     api_key: &str,
@@ -71,7 +75,6 @@ pub async fn run_workflow(
                     "[{}] Validation FAILED, retrying ({}/{})",
                     session_id, state.current_attempt, state.max_attempts
                 );
-                continue;
             }
             RoutingDecision::End => {
                 error!("[{}] Max attempts reached, ending workflow", session_id);
@@ -100,7 +103,6 @@ pub async fn run_workflow(
                     "[{}] Interface creation failed, retrying ({}/3)",
                     session_id, state.interface_attempt
                 );
-                continue;
             }
             RoutingDecision::End => {
                 error!("[{}] Max interface attempts reached", session_id);
@@ -126,6 +128,10 @@ pub async fn run_workflow(
 /// Saves the report to database.
 ///
 /// Equivalent to `save_database_node` in Python.
+///
+/// # Errors
+///
+/// Returns an error if the database operation fails critically.
 async fn save_to_database(
     pool: &PgPool,
     mut state: ReportState,
@@ -177,7 +183,7 @@ async fn save_to_database(
             state.success = false;
             state
                 .error_messages
-                .push(format!("Database save error: {}", e));
+                .push(format!("Database save error: {e}"));
         }
     }
 

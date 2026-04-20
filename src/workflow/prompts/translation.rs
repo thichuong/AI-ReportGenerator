@@ -1,6 +1,6 @@
 //! Translation prompts
 
-pub const TRANSLATE_HTML_PROMPT: &str = r#"Translate HTML content from Vietnamese to English
+pub const TRANSLATE_HTML_PROMPT: &str = r"Translate HTML content from Vietnamese to English
 
 IMPORTANT REQUIREMENTS:
 - Keep ALL HTML tags, CSS classes, IDs, and structure exactly the same unless otherwise specified below.
@@ -15,9 +15,9 @@ ADDITIONAL PROJECT-SPECIFIC REQUIREMENT:
 
 Content to translate (follow the rules above):
 
-{content}"#;
+{content}";
 
-pub const TRANSLATE_JS_PROMPT: &str = r#"Translate JavaScript content from Vietnamese to English
+pub const TRANSLATE_JS_PROMPT: &str = r"Translate JavaScript content from Vietnamese to English
 
 REQUIREMENTS:
 - Translate only legend/label content to English (keep crypto terms like BTC, ETH, RSI unchanged)
@@ -34,4 +34,4 @@ EXAMPLES:
 
 Content to translate:
 
-{js_content}"#;
+{js_content}";

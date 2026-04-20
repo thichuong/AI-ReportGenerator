@@ -22,6 +22,7 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[must_use] 
     pub fn new(pool: PgPool) -> Self {
         Self {
             pool,

@@ -51,6 +51,10 @@ pub async fn root_redirect() -> axum::response::Redirect {
 }
 
 /// Generates a report in the background.
+///
+/// # Errors
+///
+/// Returns a `StatusCode::BAD_REQUEST` error if `GEMINI_API_KEY` is not configured.
 pub async fn generate_auto_report(
     State(state): State<AppState>,
 ) -> Result<Json<GenerateResponse>, (StatusCode, Json<serde_json::Value>)> {
@@ -121,6 +125,10 @@ pub async fn generate_auto_report(
 }
 
 /// Gets progress for a session.
+///
+/// # Errors
+///
+/// Returns a `StatusCode::NOT_FOUND` error if the session ID does not exist.
 pub async fn get_progress(
     State(state): State<AppState>,
     Path(session_id): Path<String>,
@@ -138,6 +146,10 @@ pub async fn get_progress(
 }
 
 /// Generates a report synchronously (blocking).
+///
+/// # Errors
+///
+/// Returns a `StatusCode::INTERNAL_SERVER_ERROR` if manual report creation fails.
 pub async fn manual_generate(
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
@@ -172,6 +184,11 @@ pub async fn scheduler_status() -> Json<SchedulerStatusResponse> {
 }
 
 /// Gets the latest report.
+///
+/// # Errors
+///
+/// Returns a `StatusCode::NOT_FOUND` error if no reports exist, or
+/// `StatusCode::INTERNAL_SERVER_ERROR` if the database query fails.
 pub async fn get_latest_report(
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {

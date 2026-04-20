@@ -8,12 +8,16 @@ use tracing::info;
 /// Initializes the database schema.
 ///
 /// Creates tables if they do not exist.
+///
+/// # Errors
+///
+/// Returns an error if the SQL execution fails.
 pub async fn init_db(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("Checking database schema...");
 
     // Create articles table
     sqlx::query(
-        r#"
+        r"
         CREATE TABLE IF NOT EXISTS articles (
             id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
@@ -25,7 +29,7 @@ pub async fn init_db(pool: &PgPool) -> Result<(), sqlx::Error> {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ
         );
-        "#,
+        ",
     )
     .execute(pool)
     .await?;
@@ -33,7 +37,7 @@ pub async fn init_db(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     // Create crypto_report table
     sqlx::query(
-        r#"
+        r"
         CREATE TABLE IF NOT EXISTS crypto_report (
             id SERIAL PRIMARY KEY,
             html_content TEXT NOT NULL,
@@ -43,7 +47,7 @@ pub async fn init_db(pool: &PgPool) -> Result<(), sqlx::Error> {
             js_content_en TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-        "#,
+        ",
     )
     .execute(pool)
     .await?;

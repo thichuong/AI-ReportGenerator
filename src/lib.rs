@@ -1,7 +1,7 @@
 //! AI Report Generator - Rust Implementation
 //!
 //! This crate provides the core functionality for:
-//! - Database operations (PostgreSQL)
+//! - Database operations (`PostgreSQL`)
 //! - Workflow orchestration for AI report generation
 //! - Auto report scheduler
 //! - REST API (Axum)

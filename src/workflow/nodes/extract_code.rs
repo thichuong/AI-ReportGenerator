@@ -8,20 +8,21 @@ use regex::Regex;
 use tracing::{error, info, warn};
 
 /// Extracts code blocks from the generated interface response.
+///
+/// # Errors
+///
+/// Returns an error if the state transitions or code extraction logic fails.
 pub async fn extract_code(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 6: Extract code", session_id);
 
     // Get the interface content
-    let content = match &state.interface_content {
-        Some(c) => c.clone(),
-        None => {
-            let error_msg = "No interface content to extract code from";
-            error!("[{}] {}", session_id, error_msg);
-            state.add_error(error_msg);
-            state.success = false;
-            return Ok(state);
-        }
+    let content = if let Some(c) = &state.interface_content { c.clone() } else {
+        let error_msg = "No interface content to extract code from";
+        error!("[{}] {}", session_id, error_msg);
+        state.add_error(error_msg);
+        state.success = false;
+        return Ok(state);
     };
 
     // Extract code blocks
@@ -63,7 +64,7 @@ fn extract_code_blocks(text: &str) -> (Option<String>, Option<String>, Option<St
 /// Extracts a specific code block by language.
 fn extract_block(text: &str, language: &str) -> Option<String> {
     // Pattern: ```language ... ```
-    let pattern = format!(r"```{}\s*\n([\s\S]*?)\n```", language);
+    let pattern = format!(r"```{language}\s*\n([\s\S]*?)\n```");
 
     if let Ok(regex) = Regex::new(&pattern)
         && let Some(captures) = regex.captures(text)

@@ -7,6 +7,11 @@ use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
 /// Validates the research report content.
+/// Validates the generated report for quality and consistency.
+///
+/// # Errors
+///
+/// Returns an error if the validation API call fails or state transition errors occur.
 pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 3: Validate report via AI Validator", session_id);
@@ -88,7 +93,7 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
 
                     if status == "FAIL" {
                         state.success = false;
-                        state.add_error(&format!("Validation failed: {}", reasoning));
+                        state.add_error(&format!("Validation failed: {reasoning}"));
                     }
                 }
                 Err(e) => {
@@ -108,7 +113,7 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
             }
         }
         Err(e) => {
-            let error_msg = format!("Validator API call failed: {}", e);
+            let error_msg = format!("Validator API call failed: {e}");
             error!("[{}] {}", session_id, error_msg);
             if is_rate_limit_error(&e.to_string()) {
                 state.rate_limit_stop = true;

@@ -3,6 +3,11 @@ use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
+/// Generates the initial report content using Gemini API.
+///
+/// # Errors
+///
+/// Returns an error if the API call fails or state transition errors occur.
 pub async fn report_writer(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 2c: Report Synthesizer", session_id);
@@ -50,7 +55,7 @@ pub async fn report_writer(mut state: ReportState) -> Result<ReportState, anyhow
             state.success = true;
         }
         Err(e) => {
-            let error_msg = format!("Writer API call failed: {}", e);
+            let error_msg = format!("Writer API call failed: {e}");
             error!("[{}] {}", session_id, error_msg);
             if is_rate_limit_error(&e.to_string()) {
                 state.rate_limit_stop = true;

@@ -50,21 +50,19 @@ impl AutoReportScheduler {
     /// Parses schedule times from environment or uses defaults.
     ///
     /// Format: "HH:MM,HH:MM,..." (e.g., "07:30,19:00")
-    /// Default: ["07:30", "19:00"] (Vietnam time)
+    /// Default: [`07:30`, `19:00`] (Vietnam time)
     fn parse_schedule_times() -> Vec<NaiveTime> {
-        env::var("AUTO_REPORT_SCHEDULE_TIMES")
-            .map(|times| {
-                times
-                    .split(',')
-                    .filter_map(|t| NaiveTime::parse_from_str(t.trim(), "%H:%M").ok())
-                    .collect()
-            })
-            .unwrap_or_else(|_| {
-                vec![
-                    NaiveTime::from_hms_opt(7, 30, 0).expect("Valid time"),
-                    NaiveTime::from_hms_opt(19, 0, 0).expect("Valid time"),
-                ]
-            })
+        if let Ok(times) = env::var("AUTO_REPORT_SCHEDULE_TIMES") {
+            times
+                .split(',')
+                .filter_map(|t| NaiveTime::parse_from_str(t.trim(), "%H:%M").ok())
+                .collect()
+        } else {
+            // Default times if not configured
+            let morning = NaiveTime::from_hms_opt(7, 30, 0).unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
+            let evening = NaiveTime::from_hms_opt(19, 0, 0).unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
+            vec![morning, evening]
+        }
     }
 
     /// Runs the scheduler loop indefinitely.
@@ -78,7 +76,7 @@ impl AutoReportScheduler {
             // Calculate next run time
             let _now = Utc::now().with_timezone(&Ho_Chi_Minh);
             let next_run = self.get_next_run_time();
-            let wait_duration = self.calculate_wait_duration(next_run);
+            let wait_duration = Self::calculate_wait_duration(next_run);
 
             info!(
                 "⏰ Next scheduled run at: {} (in {:?})",
@@ -117,6 +115,7 @@ impl AutoReportScheduler {
     }
 
     /// Gets the next scheduled run time.
+    #[allow(clippy::expect_used)]
     fn get_next_run_time(&self) -> chrono::DateTime<chrono_tz::Tz> {
         let now = Utc::now().with_timezone(&Ho_Chi_Minh);
         let today = now.date_naive();
@@ -135,9 +134,11 @@ impl AutoReportScheduler {
         }
 
         // No more slots today, use first slot tomorrow
-        let tomorrow = today.succ_opt().expect("Valid date");
-        let first_time = self.schedule_times.first().expect("At least one time");
-        let scheduled = tomorrow.and_time(*first_time);
+        let tomorrow = today.succ_opt().unwrap_or(today);
+        let first_time = self.schedule_times.first().copied().unwrap_or_else(|| {
+            NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default()
+        });
+        let scheduled = tomorrow.and_time(first_time);
         scheduled
             .and_local_timezone(Ho_Chi_Minh)
             .single()
@@ -145,12 +146,12 @@ impl AutoReportScheduler {
     }
 
     /// Calculates wait duration until target time.
-    fn calculate_wait_duration(&self, target: chrono::DateTime<chrono_tz::Tz>) -> Duration {
+    fn calculate_wait_duration(target: chrono::DateTime<chrono_tz::Tz>) -> Duration {
         let now = Utc::now().with_timezone(&Ho_Chi_Minh);
         let diff = target.signed_duration_since(now);
 
         if diff.num_seconds() > 0 {
-            Duration::from_secs(diff.num_seconds() as u64)
+            Duration::from_secs(diff.num_seconds().unsigned_abs())
         } else {
             Duration::from_secs(0)
         }
@@ -158,12 +159,12 @@ impl AutoReportScheduler {
 
     /// Checks if current time is within 5-minute tolerance of any scheduled time.
     fn is_within_schedule_tolerance(&self, now: &chrono::DateTime<chrono_tz::Tz>) -> bool {
-        let current_time = now.time();
         const TOLERANCE_SECONDS: i64 = 300; // 5 minutes
+        let current_time = now.time();
 
         for scheduled_time in &self.schedule_times {
-            let diff = (current_time.num_seconds_from_midnight() as i64)
-                - (scheduled_time.num_seconds_from_midnight() as i64);
+            let diff = i64::from(current_time.num_seconds_from_midnight())
+                - i64::from(scheduled_time.num_seconds_from_midnight());
 
             if diff.abs() <= TOLERANCE_SECONDS {
                 return true;
@@ -191,6 +192,7 @@ impl AutoReportScheduler {
 /// Starts the auto report scheduler in a background task.
 ///
 /// Returns `true` if scheduler was started, `false` otherwise.
+#[must_use] 
 pub fn start_auto_report_scheduler(pool: PgPool) -> bool {
     if let Some(scheduler) = AutoReportScheduler::new(pool) {
         tokio::spawn(async move {
@@ -205,6 +207,12 @@ pub fn start_auto_report_scheduler(pool: PgPool) -> bool {
 /// Creates a manual report immediately.
 ///
 /// Equivalent to Python's `create_manual_report()`.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - `GEMINI_API_KEY` is not set.
+/// - The workflow fails to complete successfully.
 pub async fn create_manual_report(pool: &PgPool) -> Result<i32, anyhow::Error> {
     let api_key =
         env::var("GEMINI_API_KEY").map_err(|_| anyhow::anyhow!("GEMINI_API_KEY not set"))?;
@@ -220,17 +228,14 @@ pub async fn create_manual_report(pool: &PgPool) -> Result<i32, anyhow::Error> {
     let result = workflow::run_workflow(pool, &api_key, max_attempts).await?;
     let duration = start.elapsed();
 
-    match result.report_id {
-        Some(id) => {
-            info!("✅ Manual report #{} created in {:?}", id, duration);
-            Ok(id)
-        }
-        None => {
-            error!("❌ Manual report failed in {:?}", duration);
-            Err(anyhow::anyhow!(
-                "Report generation failed: {:?}",
-                result.error_messages
-            ))
-        }
+    if let Some(id) = result.report_id {
+        info!("✅ Manual report #{} created in {:?}", id, duration);
+        Ok(id)
+    } else {
+        error!("❌ Manual report failed in {:?}", duration);
+        Err(anyhow::anyhow!(
+            "Report generation failed: {:?}",
+            result.error_messages
+        ))
     }
 }

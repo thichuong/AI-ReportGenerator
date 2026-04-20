@@ -8,6 +8,11 @@ use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
 /// Creates the HTML/CSS/JS interface for the report.
+/// Creates the report interface using Gemini API.
+///
+/// # Errors
+///
+/// Returns an error if the API call fails or state transition errors occur.
 pub async fn create_interface(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id;
     info!(
@@ -45,8 +50,7 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
     let create_report_prompt = prompts::interface::CREATE_INTERFACE_PROMPT;
 
     let full_prompt = format!(
-        "{}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{}",
-        create_report_prompt, report_md
+        "{create_report_prompt}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{report_md}"
     );
 
     state.interface_attempt += 1;
@@ -76,7 +80,7 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
             state.success = true;
         }
         Err(e) => {
-            let error_msg = format!("Interface creation failed: {}", e);
+            let error_msg = format!("Interface creation failed: {e}");
             error!("[{}] {}", session_id, error_msg);
 
             if is_rate_limit_error(&e.to_string()) {

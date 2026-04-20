@@ -5,11 +5,16 @@ use multi_tier_cache::StreamingBackend;
 use std::env;
 use tracing::{error, info, warn};
 
-/// Prepares data and initializes the workflow state.
+/// Prepares data and initializes the workflow state by fetching from database.
 ///
+/// Steps:
 /// - Validates API key
 /// - Reads prompts from environment variables (with file fallback)
 /// - Fetches real-time data from Redis (if available)
+///
+/// # Errors
+///
+/// Returns an error if the database query fails.
 pub async fn prepare_data(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id;
     info!("[{}] Step 1: Preparing data", session_id);

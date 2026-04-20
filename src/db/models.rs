@@ -8,7 +8,7 @@ use sqlx::FromRow;
 
 /// Article model for investment reports.
 ///
-/// Equivalent to Python's `Article` SQLAlchemy model.
+/// Equivalent to Python's `Article` `SQLAlchemy` model.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Article {
     pub id: i32,
@@ -37,13 +37,17 @@ pub struct NewArticle {
 
 impl Article {
     /// Inserts a new article into the database.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn insert(pool: &sqlx::PgPool, article: NewArticle) -> Result<Self, sqlx::Error> {
         let result = sqlx::query_as::<_, Article>(
-            r#"
+            r"
             INSERT INTO articles (title, content, summary, symbol, report_type, is_published, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, COALESCE($6, false), NOW(), NOW())
             RETURNING id, title, content, summary, symbol, report_type, is_published, created_at, updated_at
-            "#,
+            ",
         )
         .bind(&article.title)
         .bind(&article.content)
@@ -58,6 +62,10 @@ impl Article {
     }
 
     /// Finds an article by ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn find_by_id(pool: &sqlx::PgPool, id: i32) -> Result<Option<Self>, sqlx::Error> {
         let result = sqlx::query_as::<_, Article>(
             "SELECT id, title, content, summary, symbol, report_type, is_published, created_at, updated_at FROM articles WHERE id = $1",
@@ -70,6 +78,10 @@ impl Article {
     }
 
     /// Lists articles with pagination.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn list(
         pool: &sqlx::PgPool,
         limit: i64,
@@ -87,6 +99,10 @@ impl Article {
     }
 
     /// Finds the latest article by symbol.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn find_latest_by_symbol(
         pool: &sqlx::PgPool,
         symbol: &str,
@@ -104,7 +120,7 @@ impl Article {
 
 /// Crypto report model for AI-generated content.
 ///
-/// Equivalent to Python's `CryptoReport` SQLAlchemy model.
+/// Equivalent to Python's `CryptoReport` `SQLAlchemy` model.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct CryptoReport {
     pub id: i32,
@@ -130,13 +146,17 @@ pub struct NewCryptoReport {
 
 impl CryptoReport {
     /// Inserts a new crypto report into the database.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn insert(pool: &sqlx::PgPool, report: NewCryptoReport) -> Result<Self, sqlx::Error> {
         let result = sqlx::query_as::<_, CryptoReport>(
-            r#"
+            r"
             INSERT INTO crypto_report (html_content, css_content, js_content, html_content_en, js_content_en, created_at)
             VALUES ($1, $2, $3, $4, $5, NOW())
             RETURNING id, html_content, css_content, js_content, html_content_en, js_content_en, created_at
-            "#,
+            ",
         )
         .bind(&report.html_content)
         .bind(&report.css_content)
@@ -150,6 +170,10 @@ impl CryptoReport {
     }
 
     /// Finds a crypto report by ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn find_by_id(pool: &sqlx::PgPool, id: i32) -> Result<Option<Self>, sqlx::Error> {
         let result = sqlx::query_as::<_, CryptoReport>(
             "SELECT id, html_content, css_content, js_content, html_content_en, js_content_en, created_at FROM crypto_report WHERE id = $1",
@@ -162,6 +186,10 @@ impl CryptoReport {
     }
 
     /// Gets the latest crypto report.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SQL execution fails.
     pub async fn find_latest(pool: &sqlx::PgPool) -> Result<Option<Self>, sqlx::Error> {
         let result = sqlx::query_as::<_, CryptoReport>(
             "SELECT id, html_content, css_content, js_content, html_content_en, js_content_en, created_at FROM crypto_report ORDER BY created_at DESC LIMIT 1",

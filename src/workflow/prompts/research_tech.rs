@@ -1,6 +1,6 @@
 //! Technical & On-chain Analysis Prompt
 
-pub const TECH_PROMPT: &str = r#"# 📊 Phân Tích Kỹ Thuật & On-chain - Thị Trường Crypto
+pub const TECH_PROMPT: &str = r"# 📊 Phân Tích Kỹ Thuật & On-chain - Thị Trường Crypto
 
 **Vai trò:** Chuyên gia Phân tích Kỹ thuật & Dữ liệu On-chain.
 **Ngày báo cáo:** Hôm nay ngày <<@day>> tháng <<@month>> năm <<@year>>
@@ -20,4 +20,4 @@ Bạn hãy phân tích trạng thái thị trường dựa trên **Dữ liệu R
 ```
 
 **Yêu cầu Output:** Viết tay dạng báo cáo phân tích Markdown (Khoảng 400 - 600 từ), tập trung vào các số liệu cụ thể. Bắt buộc dùng tiếng Việt chuẩn mực.
-"#;
+";

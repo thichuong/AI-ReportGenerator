@@ -55,7 +55,8 @@ pub struct ReportState {
 }
 
 impl ReportState {
-    /// Creates a new ReportState with initial values.
+    /// Creates a new `ReportState` with initial values.
+    #[must_use] 
     pub fn new(session_id: &str, api_key: &str, max_attempts: u32) -> Self {
         Self {
             session_id: session_id.to_string(),
@@ -97,6 +98,7 @@ impl ReportState {
     }
 
     /// Checks if there are any errors.
+    #[must_use] 
     pub fn has_errors(&self) -> bool {
         !self.error_messages.is_empty()
     }

@@ -3,9 +3,9 @@ use regex::Regex;
 use std::sync::OnceLock;
 use tracing::{error, info};
 
-static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-
+#[allow(clippy::expect_used)]
 fn get_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
@@ -32,6 +32,18 @@ impl Default for ApiConfig {
 }
 
 /// Calls Gemini API with the given prompt.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The API request fails and all retries are exhausted.
+/// - The API response cannot be parsed.
+/// - No text can be extracted from the AI response.
+///
+/// # Panics
+///
+/// This function may panic if the internal JSON structure creation fails,
+/// though this is unlikely with the static configurations used.
 pub async fn call_gemini_api(
     api_key: &str,
     prompt: &str,
@@ -41,10 +53,10 @@ pub async fn call_gemini_api(
     json_mode: bool,
     config_override: Option<ApiConfig>,
 ) -> Result<String, anyhow::Error> {
+    const MAX_RETRIES: u32 = 3;
     let client = get_client();
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={}",
-        api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
     );
 
     let config_val = config_override.unwrap_or_default();
@@ -57,11 +69,17 @@ pub async fn call_gemini_api(
         }
     });
 
-    if json_mode {
-        config["responseMimeType"] = serde_json::Value::String("application/json".to_string());
+    if json_mode
+        && let Some(obj) = config.as_object_mut()
+    {
+        obj.insert(
+            "responseMimeType".to_string(),
+            serde_json::Value::String("application/json".to_string()),
+        );
         // For JSON mode, lower temperature to reduce hallucination
-        config["temperature"] =
-            serde_json::Value::Number(serde_json::Number::from_f64(0.1).unwrap());
+        if let Some(num) = serde_json::Number::from_f64(0.1) {
+            obj.insert("temperature".to_string(), serde_json::Value::Number(num));
+        }
     }
 
     let mut body = serde_json::json!({
@@ -71,12 +89,16 @@ pub async fn call_gemini_api(
         "generationConfig": config
     });
 
-    if enable_search {
-        body["tools"] = serde_json::json!([{ "googleSearch": {} }]);
+    if enable_search
+        && let Some(obj) = body.as_object_mut()
+    {
+        obj.insert(
+            "tools".to_string(),
+            serde_json::json!([{ "googleSearch": {} }]),
+        );
     }
 
     let mut retries = 0;
-    const MAX_RETRIES: u32 = 3;
 
     loop {
         let response = client
@@ -96,7 +118,7 @@ pub async fn call_gemini_api(
                 .unwrap_or(false);
 
             if debug_enabled {
-                let debug_json_path = format!("debug_{}_full_{}.json", node_name, session_id);
+                let debug_json_path = format!("debug_{node_name}_full_{session_id}.json");
                 if let Err(e) = std::fs::write(
                     &debug_json_path,
                     serde_json::to_string_pretty(&json).unwrap_or_default(),
@@ -111,9 +133,15 @@ pub async fn call_gemini_api(
             }
 
             let mut full_text = String::new();
-            if let Some(parts) = json["candidates"][0]["content"]["parts"].as_array() {
-                for part in parts {
-                    if let Some(part_text) = part["text"].as_str() {
+            let parts = json.get("candidates")
+                .and_then(|c| c.get(0))
+                .and_then(|c| c.get("content"))
+                .and_then(|c| c.get("parts"))
+                .and_then(|p| p.as_array());
+
+            if let Some(parts_arr) = parts {
+                for part in parts_arr {
+                    if let Some(part_text) = part.get("text").and_then(|t| t.as_str()) {
                         full_text.push_str(part_text);
                     }
                 }
@@ -132,18 +160,17 @@ pub async fn call_gemini_api(
             );
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             continue;
-        } else {
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!(
-                "API request failed with status {}: {}",
-                status,
-                error_text
-            ));
         }
+
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(anyhow::anyhow!(
+            "API request failed with status {status}: {error_text}"
+        ));
     }
 }
 
 /// Checks if the error message indicates a rate limit.
+#[must_use] 
 pub fn is_rate_limit_error(error: &str) -> bool {
     let error_lower = error.to_lowercase();
     error_lower.contains("429")
@@ -154,6 +181,7 @@ pub fn is_rate_limit_error(error: &str) -> bool {
 
 static MATHJAX_REPLACEMENTS: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
 
+#[allow(clippy::expect_used)]
 fn get_mathjax_replacements() -> &'static Vec<(Regex, &'static str)> {
     MATHJAX_REPLACEMENTS.get_or_init(|| {
         vec![
@@ -210,6 +238,10 @@ fn get_mathjax_replacements() -> &'static Vec<(Regex, &'static str)> {
 }
 
 /// Processes content to convert common symbols to MathJax/LaTeX equivalents.
+///
+/// This is used to replace backend-side technical symbols with LaTeX/MathJax or
+/// `FontAwesome` icons for consistent rendering across platforms.
+#[must_use]
 pub fn process_mathjax(content: &str) -> String {
     let replacements = get_mathjax_replacements();
     let mut result = std::borrow::Cow::Borrowed(content);

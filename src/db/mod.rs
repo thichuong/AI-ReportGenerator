@@ -11,10 +11,14 @@ use sqlx::postgres::PgPoolOptions;
 use std::env;
 use tracing::info;
 
-/// Creates a PostgreSQL connection pool.
+/// Creates a `PostgreSQL` connection pool.
 ///
 /// Reads `DATABASE_URL` from environment variables.
 /// Uses lazy connection to avoid blocking startup.
+///
+/// # Errors
+///
+/// Returns an error if the database connection configuration is invalid.
 pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     let database_url =
         env::var("DATABASE_URL").unwrap_or_else(|_| "postgresql://localhost/ai_report".to_string());
@@ -37,6 +41,7 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
 /// Gets a database session (connection from pool).
 ///
 /// This is the Rust equivalent of Python's `get_db()` dependency.
+#[must_use] 
 pub fn get_db(pool: &PgPool) -> &PgPool {
     pool
 }

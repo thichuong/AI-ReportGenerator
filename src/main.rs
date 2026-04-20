@@ -76,8 +76,8 @@ async fn main() -> anyhow::Result<()> {
 
 /// Graceful shutdown handler.
 async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("Failed to install CTRL+C signal handler");
+    if let Err(e) = tokio::signal::ctrl_c().await {
+        tracing::error!("Failed to install CTRL+C signal handler: {}", e);
+    }
     info!("🛑 Shutdown signal received");
 }

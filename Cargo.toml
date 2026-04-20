@@ -56,3 +56,10 @@ tokio-test = "0.4.3"
 [[bin]]
 name = "ai-report-generator"
 path = "src/main.rs"
+
+[lints.clippy]
+pedantic = "warn"
+
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"

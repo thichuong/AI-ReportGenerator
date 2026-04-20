@@ -1,6 +1,6 @@
 //! Report Writer & Synthesizer Prompt
 
-pub const WRITER_PROMPT: &str = r#"# 📝 Trình Tổng Hợp Báo Cáo Research Chuyên Nghiệp
+pub const WRITER_PROMPT: &str = r"# 📝 Trình Tổng Hợp Báo Cáo Research Chuyên Nghiệp
 
 **Vai trò:** Nhà phân tích Thị trường Tài chính Cấp cao (Lead Analyst).
 **Nhiệm vụ:** Tổng hợp các mảnh ghép (Bản Phân tích Kỹ thuật & Bản Phân tích Vĩ mô) thành BÁO CÁO FINAL hoàn chỉnh, chuyên nghiệp.
@@ -44,4 +44,4 @@ Viết một báo cáo duy nhất bằng tiếng Việt chuẩn (chỉ xuất ra
 - Triển vọng Ngắn hạn (Vài ngày - 1 Tuần).
 - Các kịch bản có thể xảy ra (Tăng/Giảm/Đi ngang) kèm điều kiện kích hoạt.
 - **Khuyến nghị chiến lược giao dịch và quản trị rủi ro chi tiết.**
-"#;
+";

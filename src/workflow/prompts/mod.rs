@@ -1,7 +1,7 @@
 //! Prompts module
 //!
 //! Contains all AI prompts used in the workflow.
-//! Previously loaded from .md files in prompt_envs/.
+//! Previously loaded from .md files in `prompt_envs`/.
 
 pub mod interface;
 pub mod report_validator;
@@ -13,6 +13,7 @@ pub mod translation;
 use chrono::Utc;
 
 /// Replaces common placeholders in prompt text.
+#[must_use] 
 pub fn process_placeholders(text: &str) -> String {
     let now = Utc::now();
     text.replace("<<@day>>", &now.format("%d").to_string())
