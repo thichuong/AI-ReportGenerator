@@ -69,9 +69,7 @@ pub async fn call_gemini_api(
         }
     });
 
-    if json_mode
-        && let Some(obj) = config.as_object_mut()
-    {
+    if json_mode && let Some(obj) = config.as_object_mut() {
         obj.insert(
             "responseMimeType".to_string(),
             serde_json::Value::String("application/json".to_string()),
@@ -89,9 +87,7 @@ pub async fn call_gemini_api(
         "generationConfig": config
     });
 
-    if enable_search
-        && let Some(obj) = body.as_object_mut()
-    {
+    if enable_search && let Some(obj) = body.as_object_mut() {
         obj.insert(
             "tools".to_string(),
             serde_json::json!([{ "googleSearch": {} }]),
@@ -133,7 +129,8 @@ pub async fn call_gemini_api(
             }
 
             let mut full_text = String::new();
-            let parts = json.get("candidates")
+            let parts = json
+                .get("candidates")
                 .and_then(|c| c.get(0))
                 .and_then(|c| c.get("content"))
                 .and_then(|c| c.get("parts"))
@@ -170,7 +167,7 @@ pub async fn call_gemini_api(
 }
 
 /// Checks if the error message indicates a rate limit.
-#[must_use] 
+#[must_use]
 pub fn is_rate_limit_error(error: &str) -> bool {
     let error_lower = error.to_lowercase();
     error_lower.contains("429")
@@ -185,50 +182,87 @@ static MATHJAX_REPLACEMENTS: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::ne
 fn get_mathjax_replacements() -> &'static Vec<(Regex, &'static str)> {
     MATHJAX_REPLACEMENTS.get_or_init(|| {
         vec![
+            // Arrow combinations (Trend indicators)
+            (
+                Regex::new(r"\$\s*\\uparrow\s*\\rightarrow\s*\$").expect("Invalid regex: up-right"),
+                r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i><i class="fas fa-arrow-right mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\downarrow\s*\\rightarrow\s*\$").expect("Invalid regex: down-right"),
+                r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i><i class="fas fa-arrow-right mx-1"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\rightarrow\s*\\uparrow\s*\$").expect("Invalid regex: right-up"),
+                r#"<i class="fas fa-arrow-right mx-1"></i><i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\rightarrow\s*\\downarrow\s*\$").expect("Invalid regex: right-down"),
+                r#"<i class="fas fa-arrow-right mx-1"></i><i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\uparrow\s*\\uparrow\s*\$").expect("Invalid regex: double-up"),
+                r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i><i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
+            ),
+            (
+                Regex::new(r"\$\s*\\downarrow\s*\\downarrow\s*\$").expect("Invalid regex: double-down"),
+                r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i><i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
+            ),
+            // Single Right arrow
             (
                 Regex::new(r"\$\s*\\rightarrow\s*\$").expect("Invalid regex: rightarrow"),
                 r#"<i class="fas fa-arrow-right mx-1"></i>"#,
             ),
+            // Single Left arrow
             (
                 Regex::new(r"\$\s*\\leftarrow\s*\$").expect("Invalid regex: leftarrow"),
                 r#"<i class="fas fa-arrow-left mx-1"></i>"#,
             ),
+            // Right double arrow
             (
                 Regex::new(r"\$\s*\\Rightarrow\s*\$").expect("Invalid regex: Rightarrow"),
                 r#"<i class="fas fa-arrow-right mx-1"></i>"#,
             ),
+            // Left double arrow
             (
                 Regex::new(r"\$\s*\\Leftarrow\s*\$").expect("Invalid regex: Leftarrow"),
                 r#"<i class="fas fa-arrow-left mx-1"></i>"#,
             ),
+            // Up arrow (Bullish)
             (
                 Regex::new(r"\$\s*\\uparrow\s*\$").expect("Invalid regex: uparrow"),
                 r#"<i class="fas fa-arrow-up mx-1 text-green-500"></i>"#,
             ),
+            // Down arrow (Bearish)
             (
                 Regex::new(r"\$\s*\\downarrow\s*\$").expect("Invalid regex: downarrow"),
                 r#"<i class="fas fa-arrow-down mx-1 text-red-500"></i>"#,
             ),
+            // Plus-minus sign
             (
                 Regex::new(r"\$\s*\\pm\s*\$").expect("Invalid regex: pm"),
                 "±",
             ),
+            // Greater than or equal to
             (
                 Regex::new(r"\$\s*\\ge(q)?\s*\$").expect("Invalid regex: ge"),
                 "≥",
             ),
+            // Less than or equal to
             (
                 Regex::new(r"\$\s*\\le(q)?\s*\$").expect("Invalid regex: le"),
                 "≤",
             ),
+            // Approximation
             (
                 Regex::new(r"\$\s*\\approx\s*\$").expect("Invalid regex: approx"),
                 "≈",
             ),
+            // Ellipsis
             (
                 Regex::new(r"\$\s*\\dots\s*\$").expect("Invalid regex: dots"),
                 "…",
             ),
+            // Inline text in MathJax
             (
                 Regex::new(r"\$\s*\\text\{([^}]+)\}\s*\$").expect("Invalid regex: text"),
                 "$1",

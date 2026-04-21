@@ -20,7 +20,7 @@ pub struct ProgressData {
 }
 
 impl ProgressData {
-    #[must_use] 
+    #[must_use]
     pub fn new(session_id: &str) -> Self {
         Self {
             session_id: session_id.to_string(),
@@ -43,7 +43,7 @@ pub struct ProgressTracker {
 }
 
 impl ProgressTracker {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sessions: HashMap::new(),
@@ -86,7 +86,7 @@ impl ProgressTracker {
     }
 
     /// Gets progress for a session.
-    #[must_use] 
+    #[must_use]
     pub fn get_progress(&self, session_id: &str) -> Option<ProgressData> {
         self.sessions.get(session_id).cloned()
     }

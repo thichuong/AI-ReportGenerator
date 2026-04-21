@@ -49,9 +49,8 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
     // Get create_report prompt (hardcoded)
     let create_report_prompt = prompts::interface::CREATE_INTERFACE_PROMPT;
 
-    let full_prompt = format!(
-        "{create_report_prompt}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{report_md}"
-    );
+    let full_prompt =
+        format!("{create_report_prompt}\n\n---\n\n**NỘI DUNG BÁO CÁO CẦN XỬ LÝ:**\n\n{report_md}");
 
     state.interface_attempt += 1;
 

@@ -176,7 +176,8 @@ async fn translate_with_prompt(
 
     // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
     let mut full_text = String::new();
-    let parts = json.get("candidates")
+    let parts = json
+        .get("candidates")
         .and_then(|c| c.get(0))
         .and_then(|c| c.get("content"))
         .and_then(|c| c.get("parts"))

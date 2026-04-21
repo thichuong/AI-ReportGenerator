@@ -29,7 +29,7 @@ pub enum RoutingDecision {
 /// - `Continue` if validation passed
 /// - `End` if max attempts reached
 /// - `Retry` otherwise
-#[must_use] 
+#[must_use]
 pub fn should_retry_or_continue(state: &ReportState) -> RoutingDecision {
     // If validation PASS, continue
     if state.validation_result.as_deref() == Some("PASS") {
@@ -51,7 +51,7 @@ pub fn should_retry_or_continue(state: &ReportState) -> RoutingDecision {
 /// - `Continue` if extraction successful
 /// - `End` if max interface attempts (3) reached
 /// - `RetryInterface` otherwise
-#[must_use] 
+#[must_use]
 pub fn should_retry_interface_or_continue(state: &ReportState) -> RoutingDecision {
     // If successful, continue
     if state.success {
@@ -68,7 +68,7 @@ pub fn should_retry_interface_or_continue(state: &ReportState) -> RoutingDecisio
 }
 
 /// Decides next action after `create_html`.
-#[must_use] 
+#[must_use]
 pub fn should_retry_html_or_continue(state: &ReportState) -> RoutingDecision {
     if state.success && state.html_content.is_some() {
         return RoutingDecision::Continue;
@@ -82,7 +82,7 @@ pub fn should_retry_html_or_continue(state: &ReportState) -> RoutingDecision {
 }
 
 /// Decides next action after `create_javascript`.
-#[must_use] 
+#[must_use]
 pub fn should_retry_js_or_continue(state: &ReportState) -> RoutingDecision {
     if state.success && state.js_content.is_some() {
         return RoutingDecision::Continue;
@@ -96,7 +96,7 @@ pub fn should_retry_js_or_continue(state: &ReportState) -> RoutingDecision {
 }
 
 /// Decides next action after `create_css`.
-#[must_use] 
+#[must_use]
 pub fn should_retry_css_or_continue(state: &ReportState) -> RoutingDecision {
     if state.success && state.css_content.is_some() {
         return RoutingDecision::Continue;

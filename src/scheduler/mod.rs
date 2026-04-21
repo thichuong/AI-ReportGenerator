@@ -59,8 +59,10 @@ impl AutoReportScheduler {
                 .collect()
         } else {
             // Default times if not configured
-            let morning = NaiveTime::from_hms_opt(7, 30, 0).unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
-            let evening = NaiveTime::from_hms_opt(19, 0, 0).unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
+            let morning = NaiveTime::from_hms_opt(7, 30, 0)
+                .unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
+            let evening = NaiveTime::from_hms_opt(19, 0, 0)
+                .unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
             vec![morning, evening]
         }
     }
@@ -135,9 +137,11 @@ impl AutoReportScheduler {
 
         // No more slots today, use first slot tomorrow
         let tomorrow = today.succ_opt().unwrap_or(today);
-        let first_time = self.schedule_times.first().copied().unwrap_or_else(|| {
-            NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default()
-        });
+        let first_time = self
+            .schedule_times
+            .first()
+            .copied()
+            .unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default());
         let scheduled = tomorrow.and_time(first_time);
         scheduled
             .and_local_timezone(Ho_Chi_Minh)
@@ -192,7 +196,7 @@ impl AutoReportScheduler {
 /// Starts the auto report scheduler in a background task.
 ///
 /// Returns `true` if scheduler was started, `false` otherwise.
-#[must_use] 
+#[must_use]
 pub fn start_auto_report_scheduler(pool: PgPool) -> bool {
     if let Some(scheduler) = AutoReportScheduler::new(pool) {
         tokio::spawn(async move {

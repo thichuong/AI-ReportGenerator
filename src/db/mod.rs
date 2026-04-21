@@ -41,7 +41,7 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
 /// Gets a database session (connection from pool).
 ///
 /// This is the Rust equivalent of Python's `get_db()` dependency.
-#[must_use] 
+#[must_use]
 pub fn get_db(pool: &PgPool) -> &PgPool {
     pool
 }

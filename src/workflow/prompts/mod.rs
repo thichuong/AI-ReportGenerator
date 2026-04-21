@@ -13,7 +13,7 @@ pub mod translation;
 use chrono::Utc;
 
 /// Replaces common placeholders in prompt text.
-#[must_use] 
+#[must_use]
 pub fn process_placeholders(text: &str) -> String {
     let now = Utc::now();
     text.replace("<<@day>>", &now.format("%d").to_string())
