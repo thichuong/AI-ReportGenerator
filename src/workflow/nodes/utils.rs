@@ -31,34 +31,12 @@ impl Default for ApiConfig {
     }
 }
 
-/// Calls Gemini API with the given prompt.
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - The API request fails and all retries are exhausted.
-/// - The API response cannot be parsed.
-/// - No text can be extracted from the AI response.
-///
-/// # Panics
-///
-/// This function may panic if the internal JSON structure creation fails,
-/// though this is unlikely with the static configurations used.
-pub async fn call_gemini_api(
-    api_key: &str,
+fn build_gemini_request_body(
     prompt: &str,
-    session_id: &str,
-    node_name: &str,
     enable_search: bool,
     json_mode: bool,
     config_override: Option<ApiConfig>,
-) -> Result<String, anyhow::Error> {
-    const MAX_RETRIES: u32 = 3;
-    let client = get_client();
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
-    );
-
+) -> serde_json::Value {
     let config_val = config_override.unwrap_or_default();
 
     let mut config = serde_json::json!({
@@ -94,6 +72,63 @@ pub async fn call_gemini_api(
         );
     }
 
+    body
+}
+
+fn extract_text_from_response(json: &serde_json::Value) -> Option<String> {
+    let mut full_text = String::new();
+    let parts = json
+        .get("candidates")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("content"))
+        .and_then(|c| c.get("parts"))
+        .and_then(|p| p.as_array());
+
+    if let Some(parts_arr) = parts {
+        for part in parts_arr {
+            if let Some(part_text) = part.get("text").and_then(|t| t.as_str()) {
+                full_text.push_str(part_text);
+            }
+        }
+    }
+
+    if full_text.is_empty() {
+        None
+    } else {
+        Some(full_text)
+    }
+}
+
+/// Calls Gemini API with the given prompt.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The API request fails and all retries are exhausted.
+/// - The API response cannot be parsed.
+/// - No text can be extracted from the AI response.
+///
+/// # Panics
+///
+/// This function may panic if the internal JSON structure creation fails,
+/// though this is unlikely with the static configurations used.
+pub async fn call_gemini_api(
+    api_key: &str,
+    prompt: &str,
+    session_id: &str,
+    node_name: &str,
+    enable_search: bool,
+    json_mode: bool,
+    config_override: Option<ApiConfig>,
+) -> Result<String, anyhow::Error> {
+    const MAX_RETRIES: u32 = 5;
+    let client = get_client();
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
+    );
+
+    let body = build_gemini_request_body(prompt, enable_search, json_mode, config_override);
+
     let mut retries = 0;
 
     loop {
@@ -128,34 +163,22 @@ pub async fn call_gemini_api(
                 }
             }
 
-            let mut full_text = String::new();
-            let parts = json
-                .get("candidates")
-                .and_then(|c| c.get(0))
-                .and_then(|c| c.get("content"))
-                .and_then(|c| c.get("parts"))
-                .and_then(|p| p.as_array());
-
-            if let Some(parts_arr) = parts {
-                for part in parts_arr {
-                    if let Some(part_text) = part.get("text").and_then(|t| t.as_str()) {
-                        full_text.push_str(part_text);
-                    }
-                }
-            }
-
-            if full_text.is_empty() {
-                return Err(anyhow::anyhow!("Failed to extract text from AI response"));
-            }
-
-            return Ok(full_text);
+            return extract_text_from_response(&json)
+                .ok_or_else(|| anyhow::anyhow!("Failed to extract text from AI response"));
         } else if status.as_u16() == 500 && retries < MAX_RETRIES {
             retries += 1;
+            let delay = match retries {
+                2 => 15,
+                3 => 300,
+                4 => 900,
+                5 => 3600,
+                _ => 5,
+            };
             error!(
-                "[{}] Gemini API 500 Internal Server Error (Attempt {}/{}). Retrying in 5s...",
-                session_id, retries, MAX_RETRIES
+                "[{}] Gemini API 500 Internal Server Error (Attempt {}/{}). Retrying in {}s...",
+                session_id, retries, MAX_RETRIES, delay
             );
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
             continue;
         }
 
