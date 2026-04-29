@@ -129,15 +129,57 @@ pub async fn call_gemini_api(
 
     let body = build_gemini_request_body(prompt, enable_search, json_mode, config_override);
 
+    let debug_enabled = std::env::var("DEBUG")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(true);
+
+    if debug_enabled {
+        info!(
+            "[{}] Calling Gemini API ({}). Body size: {} bytes",
+            session_id,
+            node_name,
+            serde_json::to_string(&body).unwrap_or_default().len()
+        );
+    }
+
     let mut retries = 0;
 
     loop {
-        let response = client
+        let response_result = client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
-            .await?;
+            .await;
+
+        let response = match response_result {
+            Ok(resp) => resp,
+            Err(e) if retries < MAX_RETRIES => {
+                retries += 1;
+                let delay = match retries {
+                    2 => 15,
+                    3 => 300,
+                    4 => 900,
+                    5 => 3600,
+                    _ => 5,
+                };
+                error!(
+                    "[{}] Request failed for node {} (Attempt {}/{}): {}. Retrying in {}s...",
+                    session_id, node_name, retries, MAX_RETRIES, e, delay
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                continue;
+            }
+            Err(e) => {
+                error!(
+                    "[{}] Request failed for node {}: {}. URL: https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=***",
+                    session_id, node_name, e
+                );
+                return Err(anyhow::anyhow!(
+                    "Request failed after {retries} retries: {e}"
+                ));
+            }
+        };
 
         let status = response.status();
 
@@ -146,7 +188,7 @@ pub async fn call_gemini_api(
 
             let debug_enabled = std::env::var("DEBUG")
                 .map(|v| v.to_lowercase() == "true")
-                .unwrap_or(false);
+                .unwrap_or(true);
 
             if debug_enabled {
                 let debug_json_path = format!("debug_{node_name}_full_{session_id}.json");

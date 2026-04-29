@@ -3,7 +3,9 @@
 //! Translates content to English.
 //! Equivalent to `app/services/workflow_nodes/translate_content.py`
 
-use crate::workflow::nodes::utils::process_mathjax;
+use crate::workflow::nodes::utils::{
+    ApiConfig, call_gemini_api, is_rate_limit_error, process_mathjax,
+};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
@@ -109,124 +111,51 @@ async fn translate_with_prompt(
     session_id: &str,
     suffix: &str,
 ) -> Result<(Option<String>, bool), anyhow::Error> {
-    let client = reqwest::Client::new();
+    let config = ApiConfig {
+        temperature: 0.1,
+        thinking_level: "MINIMAL".to_string(),
+        ..Default::default()
+    };
 
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
-    );
+    let node_name = format!("translate_{suffix}");
 
-    let body = serde_json::json!({
-        "contents": [{
-            "parts": [{
-                "text": prompt
-            }]
-        }],
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": 32768,
-            "thinkingConfig": {
-                "thinkingLevel": "MINIMAL"
+    match call_gemini_api(
+        api_key,
+        prompt,
+        session_id,
+        &node_name,
+        false,
+        false,
+        Some(config),
+    )
+    .await
+    {
+        Ok(response) => {
+            let mut cleaned = response.trim().to_string();
+
+            // Remove markdown code blocks if present
+            if cleaned.starts_with("```") {
+                let lines: Vec<&str> = cleaned.lines().collect();
+                if lines.len() >= 3
+                    && let Some(middle) = lines.get(1..lines.len() - 1)
+                {
+                    cleaned = middle.join("\n");
+                }
             }
-        }
-    });
 
-    let response = client
-        .post(&url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
-
-    let status = response.status();
-
-    if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_default();
-
-        // Check for rate limit error
-        if is_rate_limit_error(&error_text) || status.as_u16() == 429 {
-            return Ok((None, true));
-        }
-
-        return Err(anyhow::anyhow!(
-            "Translation API failed with status {status}: {error_text}"
-        ));
-    }
-
-    let json: serde_json::Value = response.json().await?;
-
-    // DEBUG: Save full JSON to file
-    let debug_enabled = std::env::var("DEBUG")
-        .map(|v| v.to_lowercase() == "true")
-        .unwrap_or(false);
-
-    if debug_enabled {
-        let debug_json_path = format!("debug_translate_{suffix}_full_{session_id}.json");
-        if let Err(e) = std::fs::write(
-            &debug_json_path,
-            serde_json::to_string_pretty(&json).unwrap_or_default(),
-        ) {
-            error!("[{}] Failed to write debug JSON: {}", session_id, e);
-        } else {
-            info!(
-                "[{}] Saved full debug JSON to {}",
-                session_id, debug_json_path
-            );
-        }
-    }
-
-    // Extract ALL text parts from the response (to handle multi-part Thinking + Result)
-    let mut full_text = String::new();
-    let parts = json
-        .get("candidates")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("content"))
-        .and_then(|c| c.get("parts"))
-        .and_then(|p| p.as_array());
-
-    if let Some(parts_arr) = parts {
-        for part in parts_arr {
-            if let Some(part_text) = part.get("text").and_then(|t| t.as_str()) {
-                full_text.push_str(part_text);
-            }
-        }
-    }
-
-    if !full_text.is_empty() {
-        // DEBUG: Save response to file
-        if debug_enabled {
-            let debug_path = format!("debug_translate_{suffix}_{session_id}.txt");
-            if let Err(e) = std::fs::write(&debug_path, &full_text) {
-                error!("[{}] Failed to write debug file: {}", session_id, e);
+            if cleaned.is_empty() {
+                Ok((None, false))
             } else {
-                info!("[{}] Saved debug response to {}", session_id, debug_path);
+                Ok((Some(cleaned), false))
             }
         }
-
-        let mut cleaned = full_text.trim().to_string();
-
-        // Remove markdown code blocks if present
-        if cleaned.starts_with("```") {
-            let lines: Vec<&str> = cleaned.lines().collect();
-            if lines.len() >= 3
-                && let Some(middle) = lines.get(1..lines.len() - 1)
-            {
-                cleaned = middle.join("\n");
+        Err(e) => {
+            let err_str = e.to_string();
+            if is_rate_limit_error(&err_str) {
+                Ok((None, true))
+            } else {
+                Err(e)
             }
-        }
-
-        if !cleaned.is_empty() {
-            return Ok((Some(cleaned), false));
         }
     }
-
-    Ok((None, false))
-}
-
-/// Checks if the error message indicates a rate limit.
-fn is_rate_limit_error(error: &str) -> bool {
-    let error_lower = error.to_lowercase();
-    error_lower.contains("429")
-        || error_lower.contains("rate limit")
-        || error_lower.contains("quota")
-        || error_lower.contains("resource exhausted")
 }
