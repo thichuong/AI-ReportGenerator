@@ -8,7 +8,7 @@ fn get_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(std::time::Duration::from_mins(2))
             .build()
             .expect("Failed to create reqwest client")
     })
@@ -129,9 +129,7 @@ pub async fn call_gemini_api(
 
     let body = build_gemini_request_body(prompt, enable_search, json_mode, config_override);
 
-    let debug_enabled = std::env::var("DEBUG")
-        .map(|v| v.to_lowercase() == "true")
-        .unwrap_or(true);
+    let debug_enabled = std::env::var("DEBUG").map_or(true, |v| v.to_lowercase() == "true");
 
     if debug_enabled {
         info!(
@@ -186,9 +184,7 @@ pub async fn call_gemini_api(
         if status.is_success() {
             let json: serde_json::Value = response.json().await?;
 
-            let debug_enabled = std::env::var("DEBUG")
-                .map(|v| v.to_lowercase() == "true")
-                .unwrap_or(true);
+            let debug_enabled = std::env::var("DEBUG").map_or(true, |v| v.to_lowercase() == "true");
 
             if debug_enabled {
                 let debug_json_path = format!("debug_{node_name}_full_{session_id}.json");

@@ -28,9 +28,8 @@ impl AutoReportScheduler {
     pub fn new(pool: PgPool) -> Option<Self> {
         let api_key = env::var("GEMINI_API_KEY").ok()?;
 
-        let enable = env::var("ENABLE_AUTO_REPORT_SCHEDULER")
-            .map(|v| v.to_lowercase() == "true")
-            .unwrap_or(false);
+        let enable =
+            env::var("ENABLE_AUTO_REPORT_SCHEDULER").is_ok_and(|v| v.to_lowercase() == "true");
 
         if !enable {
             info!("Auto report scheduler disabled (ENABLE_AUTO_REPORT_SCHEDULER != true)");

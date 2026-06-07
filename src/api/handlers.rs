@@ -173,8 +173,7 @@ pub async fn manual_generate(
 pub async fn scheduler_status() -> Json<SchedulerStatusResponse> {
     Json(SchedulerStatusResponse {
         scheduler_enabled: env::var("ENABLE_AUTO_REPORT_SCHEDULER")
-            .map(|v| v.to_lowercase() == "true")
-            .unwrap_or(false),
+            .is_ok_and(|v| v.to_lowercase() == "true"),
         api_key_configured: env::var("GEMINI_API_KEY").is_ok(),
         max_attempts: env::var("MAX_REPORT_ATTEMPTS")
             .ok()

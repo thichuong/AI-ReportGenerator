@@ -87,12 +87,12 @@ mod tests {
 
     #[test]
     fn test_extract_html() {
-        let content = r#"
+        let content = r"
 Here is the code:
 ```html
 <div>Hello</div>
 ```
-"#;
+";
         let (html, _, _) = extract_code_blocks(content);
         assert_eq!(html, Some("<div>Hello</div>".to_string()));
     }

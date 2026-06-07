@@ -115,36 +115,44 @@ mod tests {
 
     #[test]
     fn test_should_retry_or_continue_pass() {
-        let mut state = ReportState::default();
-        state.validation_result = Some("PASS".to_string());
+        let state = ReportState {
+            validation_result: Some("PASS".to_string()),
+            ..Default::default()
+        };
 
         assert_eq!(should_retry_or_continue(&state), RoutingDecision::Continue);
     }
 
     #[test]
     fn test_should_retry_or_continue_fail() {
-        let mut state = ReportState::default();
-        state.validation_result = Some("FAIL".to_string());
-        state.current_attempt = 1;
-        state.max_attempts = 3;
+        let state = ReportState {
+            validation_result: Some("FAIL".to_string()),
+            current_attempt: 1,
+            max_attempts: 3,
+            ..Default::default()
+        };
 
         assert_eq!(should_retry_or_continue(&state), RoutingDecision::Retry);
     }
 
     #[test]
     fn test_should_retry_or_continue_max_attempts() {
-        let mut state = ReportState::default();
-        state.validation_result = Some("FAIL".to_string());
-        state.current_attempt = 3;
-        state.max_attempts = 3;
+        let state = ReportState {
+            validation_result: Some("FAIL".to_string()),
+            current_attempt: 3,
+            max_attempts: 3,
+            ..Default::default()
+        };
 
         assert_eq!(should_retry_or_continue(&state), RoutingDecision::End);
     }
 
     #[test]
     fn test_should_retry_interface_success() {
-        let mut state = ReportState::default();
-        state.success = true;
+        let state = ReportState {
+            success: true,
+            ..Default::default()
+        };
 
         assert_eq!(
             should_retry_interface_or_continue(&state),
@@ -154,9 +162,11 @@ mod tests {
 
     #[test]
     fn test_should_retry_interface_max_attempts() {
-        let mut state = ReportState::default();
-        state.success = false;
-        state.interface_attempt = 3;
+        let state = ReportState {
+            success: false,
+            interface_attempt: 3,
+            ..Default::default()
+        };
 
         assert_eq!(
             should_retry_interface_or_continue(&state),
