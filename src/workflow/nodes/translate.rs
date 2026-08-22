@@ -4,7 +4,7 @@
 //! Equivalent to `app/services/workflow_nodes/translate_content.py`
 
 use crate::workflow::nodes::utils::{
-    ApiConfig, call_gemini_api, is_rate_limit_error, process_mathjax,
+    ApiConfig, call_gemini_flash_lite_api, is_rate_limit_error, process_mathjax,
 };
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
@@ -119,12 +119,11 @@ async fn translate_with_prompt(
 
     let node_name = format!("translate_{suffix}");
 
-    match call_gemini_api(
+    match call_gemini_flash_lite_api(
         api_key,
         prompt,
         session_id,
         &node_name,
-        false,
         false,
         Some(config),
     )

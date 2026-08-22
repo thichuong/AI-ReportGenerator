@@ -2,7 +2,7 @@
 //!
 //! Validates the research content quality via AI Validator.
 
-use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::{call_gemini_flash_lite_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info, warn};
 
@@ -48,13 +48,12 @@ pub async fn validate_report(mut state: ReportState) -> Result<ReportState, anyh
         )
     };
 
-    // Call API with JSON format enabled
-    match call_gemini_api(
+    // Call API with JSON format enabled via Gemini 3.5 Flash Lite
+    match call_gemini_flash_lite_api(
         &state.api_key,
         &full_prompt,
         session_id,
         "validator",
-        false,
         true,
         None,
     )

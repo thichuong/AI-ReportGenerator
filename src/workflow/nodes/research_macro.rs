@@ -1,9 +1,9 @@
 //! Macro deep node
-use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::{call_gemma_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
-/// Researches macro-economic data using Gemini API.
+/// Researches macro-economic data using Gemma API.
 ///
 /// # Errors
 ///
@@ -23,7 +23,7 @@ pub async fn research_macro(mut state: ReportState) -> Result<ReportState, anyho
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemini_api(
+    match call_gemma_api(
         &state.api_key,
         &full_prompt,
         session_id,

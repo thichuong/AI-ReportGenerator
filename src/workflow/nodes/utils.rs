@@ -99,7 +99,13 @@ fn extract_text_from_response(json: &serde_json::Value) -> Option<String> {
     }
 }
 
-/// Calls Gemini API with the given prompt.
+/// Model identifier for Gemma 4 (used for research nodes with search tool enabled).
+pub const MODEL_GEMMA_4: &str = "gemma-4-31b-it";
+
+/// Model identifier for Gemini 3.5 Flash Lite (used for synthesis, validation, interface, translation).
+pub const MODEL_GEMINI_3_5_FLASH_LITE: &str = "gemini-3.5-flash-lite";
+
+/// Low-level function to call Google Generative Language API with a specific model.
 ///
 /// # Errors
 ///
@@ -107,12 +113,9 @@ fn extract_text_from_response(json: &serde_json::Value) -> Option<String> {
 /// - The API request fails and all retries are exhausted.
 /// - The API response cannot be parsed.
 /// - No text can be extracted from the AI response.
-///
-/// # Panics
-///
-/// This function may panic if the internal JSON structure creation fails,
-/// though this is unlikely with the static configurations used.
-pub async fn call_gemini_api(
+#[allow(clippy::too_many_arguments)]
+pub async fn call_model_api(
+    model: &str,
     api_key: &str,
     prompt: &str,
     session_id: &str,
@@ -124,7 +127,7 @@ pub async fn call_gemini_api(
     const MAX_RETRIES: u32 = 5;
     let client = get_client();
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key={api_key}"
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     );
 
     let body = build_gemini_request_body(prompt, enable_search, json_mode, config_override);
@@ -133,8 +136,9 @@ pub async fn call_gemini_api(
 
     if debug_enabled {
         info!(
-            "[{}] Calling Gemini API ({}). Body size: {} bytes",
+            "[{}] Calling {} API ({}). Body size: {} bytes",
             session_id,
+            model,
             node_name,
             serde_json::to_string(&body).unwrap_or_default().len()
         );
@@ -162,16 +166,16 @@ pub async fn call_gemini_api(
                     _ => 5,
                 };
                 error!(
-                    "[{}] Request failed for node {} (Attempt {}/{}): {}. Retrying in {}s...",
-                    session_id, node_name, retries, MAX_RETRIES, e, delay
+                    "[{}] Request failed for node {} with model {} (Attempt {}/{}): {}. Retrying in {}s...",
+                    session_id, node_name, model, retries, MAX_RETRIES, e, delay
                 );
                 tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
                 continue;
             }
             Err(e) => {
                 error!(
-                    "[{}] Request failed for node {}: {}. URL: https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=***",
-                    session_id, node_name, e
+                    "[{}] Request failed for node {} with model {}: {}. URL: https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key=***",
+                    session_id, node_name, model, e, model
                 );
                 return Err(anyhow::anyhow!(
                     "Request failed after {retries} retries: {e}"
@@ -213,8 +217,8 @@ pub async fn call_gemini_api(
                 _ => 5,
             };
             error!(
-                "[{}] Gemini API 500 Internal Server Error (Attempt {}/{}). Retrying in {}s...",
-                session_id, retries, MAX_RETRIES, delay
+                "[{}] {} API 500 Internal Server Error for node {} (Attempt {}/{}). Retrying in {}s...",
+                session_id, model, node_name, retries, MAX_RETRIES, delay
             );
             tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
             continue;
@@ -222,9 +226,63 @@ pub async fn call_gemini_api(
 
         let error_text = response.text().await.unwrap_or_default();
         return Err(anyhow::anyhow!(
-            "API request failed with status {status}: {error_text}"
+            "API request to {model} failed with status {status}: {error_text}"
         ));
     }
+}
+
+/// Calls Gemma 4 API (`gemma-4-31b-it`), used for search-enabled research nodes.
+///
+/// # Errors
+///
+/// Returns an error if the API request fails or response cannot be parsed.
+#[allow(clippy::too_many_arguments)]
+pub async fn call_gemma_api(
+    api_key: &str,
+    prompt: &str,
+    session_id: &str,
+    node_name: &str,
+    enable_search: bool,
+    json_mode: bool,
+    config_override: Option<ApiConfig>,
+) -> Result<String, anyhow::Error> {
+    call_model_api(
+        MODEL_GEMMA_4,
+        api_key,
+        prompt,
+        session_id,
+        node_name,
+        enable_search,
+        json_mode,
+        config_override,
+    )
+    .await
+}
+
+/// Calls Gemini 3.5 Flash Lite API (`gemini-3.5-flash-lite`), used for synthesis, validation, interface creation, and translation.
+///
+/// # Errors
+///
+/// Returns an error if the API request fails or response cannot be parsed.
+pub async fn call_gemini_flash_lite_api(
+    api_key: &str,
+    prompt: &str,
+    session_id: &str,
+    node_name: &str,
+    json_mode: bool,
+    config_override: Option<ApiConfig>,
+) -> Result<String, anyhow::Error> {
+    call_model_api(
+        MODEL_GEMINI_3_5_FLASH_LITE,
+        api_key,
+        prompt,
+        session_id,
+        node_name,
+        false,
+        json_mode,
+        config_override,
+    )
+    .await
 }
 
 /// Checks if the error message indicates a rate limit.

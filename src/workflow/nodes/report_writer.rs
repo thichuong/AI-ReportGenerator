@@ -1,9 +1,9 @@
 //! Report Synthesizer Node
-use crate::workflow::nodes::utils::{call_gemini_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::{call_gemini_flash_lite_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
-/// Generates the initial report content using Gemini API.
+/// Generates the initial report content using Gemini 3.5 Flash Lite API.
 ///
 /// # Errors
 ///
@@ -36,13 +36,12 @@ pub async fn report_writer(mut state: ReportState) -> Result<ReportState, anyhow
         full_prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    // No google search needed for the synthesizer
-    match call_gemini_api(
+    // No google search needed for the synthesizer, uses Gemini 3.5 Flash Lite
+    match call_gemini_flash_lite_api(
         &state.api_key,
         &full_prompt,
         session_id,
         "writer",
-        false,
         false,
         None,
     )

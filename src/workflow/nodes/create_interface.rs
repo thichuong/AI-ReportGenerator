@@ -3,12 +3,12 @@
 //! Creates HTML/CSS/JS interface for the report.
 //! Equivalent to `app/services/workflow_nodes/create_interface.py`
 
-use crate::workflow::nodes::utils::{ApiConfig, call_gemini_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::{ApiConfig, call_gemini_flash_lite_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
 /// Creates the HTML/CSS/JS interface for the report.
-/// Creates the report interface using Gemini API.
+/// Creates the report interface using Gemini 3.5 Flash Lite API.
 ///
 /// # Errors
 ///
@@ -61,13 +61,12 @@ pub async fn create_interface(mut state: ReportState) -> Result<ReportState, any
         ..Default::default()
     };
 
-    // Call shared Gemini API utility
-    match call_gemini_api(
+    // Call shared Gemini 3.5 Flash Lite API utility
+    match call_gemini_flash_lite_api(
         &state.api_key,
         &full_prompt,
         session_id,
         "interface",
-        false,
         false,
         Some(config),
     )
