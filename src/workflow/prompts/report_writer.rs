@@ -98,10 +98,10 @@ Hãy tạo báo cáo theo đúng cấu trúc tiêu chuẩn 6 phần dưới đâ
 - **Khuyến nghị định hướng nhanh (Quick Stance):** Trạng thái khuyến nghị tổng thể (Tích cực / Thận trọng / Phòng thủ).
 
 ### 2. 🧠 Tâm Lý Thị Trường, Tin Tức & Bối Cảnh Pháp Lý (Sentiment, News & Regulations)
-- **Chỉ số Sợ hãi & Tham lam (Fear & Greed Index):** Điểm số hiện tại, trạng thái tâm lý, so sánh với ngày/tuần trước và phản ứng tâm lý đám đông trên mạng xã hội (Twitter/X, Reddit, Telegram).
-- **Tin tức Breaking & Sự kiện Nổi bật 24h:** Tổng hợp các sự kiện nóng nhất (nâng cấp công nghệ, vụ việc hack/depeg, các tuyên bố từ các nhân vật lớn như Elon Musk, Michael Saylor, Cathie Wood...).
-- **Pháp lý & Địa chính trị:** Diễn biến pháp lý từ SEC/CFTC, khung pháp lý MiCA, dự luật Stablecoin, và các yếu tố địa chính trị tác động đến dòng vốn & năng lượng khai thác.
-- **Quan điểm Chuyên gia & Tổ chức Tài chính:** Tổng hợp nhận định từ các ngân hàng lớn (JPMorgan, Goldman Sachs, Morgan Stanley...) và chuyên gia phân tích on-chain/vĩ mô uy tín.
+- **Chỉ số Sợ hãi & Tham lam (Fear & Greed Index):** Điểm số hiện tại, trạng thái tâm lý, so sánh với ngày/tuần trước và phản ứng tâm lý đám đông trên mạng xã hội.
+- **Tin tức Breaking & Sự kiện Nổi bật 24h:** Tổng hợp các sự kiện nóng nhất trong ngày (nâng cấp công nghệ, vụ việc bảo mật, các tuyên bố từ những nhân vật có tầm ảnh hưởng lớn).
+- **Pháp lý & Địa chính trị:** Diễn biến pháp lý từ các cơ quan quản lý tài chính, chính sách quản lý tài sản số/stablecoin, và các yếu tố địa chính trị tác động đến dòng vốn & thị trường.
+- **Quan điểm Chuyên gia & Tổ chức Tài chính:** Tổng hợp nhận định và dự báo từ các ngân hàng đầu tư, định chế tài chính và chuyên gia phân tích on-chain/vĩ mô uy tín.
 
 ### 3. 📊 Phân Tích Kỹ Thuật, ETF & Dòng Tiền On-Chain (Technical, ETF & On-Chain Flow)
 - **Phân tích Kỹ thuật BTC & ETH:** Xu hướng chủ đạo trên khung Ngày (1D) và khung Tuần (Weekly), các chỉ báo động lượng (RSI, MACD, Stochastic), tín hiệu phân kỳ và khối lượng giao dịch (Volume Profile).
@@ -110,10 +110,10 @@ Hãy tạo báo cáo theo đúng cấu trúc tiêu chuẩn 6 phần dưới đâ
   | :--- | :--- | :--- | :--- |
   | Ngắn hạn (1D) | $... | $... | ... |
   | Trung hạn (1W) | $... | $... | ... |
-- **Tỷ lệ Thống trị Bitcoin (BTC.D) & Altcoin Season Index:** Xu hướng luân chuyển dòng vốn giữa Bitcoin và các nhóm Altcoins (Layer 1, L2, DeFi, AI, RWA, Memes).
-- **Dòng Tiền Thể Chế & Quỹ Spot Bitcoin ETF:** Báo cáo dòng tiền ròng (Inflows/Outflows) của các quỹ lớn (IBIT của BlackRock, FBTC của Fidelity, GBTC, ARKB, BITO) và tác động tới giá giao ngay.
-- **Dữ liệu On-chain & Hoạt động Cá Voi (Whale Activity):** Biến động các ví lớn (>100 BTC), dự trữ trên các sàn giao dịch (Exchange Reserves/Inflows/Outflows), động thái của ví ngủ đông (>2 năm) và dòng tiền thông minh (Smart Money).
-- **Kho bạc Doanh nghiệp & Quỹ Mạo hiểm (Corporate Treasury & VCs):** Động thái từ MicroStrategy, các công ty khai thác coin (Miners) và các quỹ đầu tư VC crypto lớn.
+- **Tỷ lệ Thống trị Bitcoin (BTC.D) & Altcoin Season Index:** Xu hướng luân chuyển dòng vốn giữa Bitcoin và các nhóm Altcoins/narratives đang dẫn dắt thị trường.
+- **Dòng Tiền Thể Chế & Quỹ Spot Bitcoin ETF:** Báo cáo tổng dòng tiền ròng (Inflows/Outflows) của các quỹ Spot Bitcoin ETF và tác động tới giá giao ngay.
+- **Dữ liệu On-chain & Hoạt động Cá Voi (Whale Activity):** Biến động các ví lớn, dự trữ trên các sàn giao dịch (Exchange Reserves/Inflows/Outflows), động thái của ví ngủ đông và dòng tiền thông minh (Smart Money).
+- **Kho bạc Doanh nghiệp & Quỹ Mạo hiểm (Corporate Treasury & VCs):** Động thái mua/nắm giữ từ các doanh nghiệp niêm yết, các công ty khai thác coin (Miners) và các thương vụ đầu tư VC crypto mới nhất.
 
 ### 4. 🌍 Kinh Tế Vĩ Mô & Dòng Vốn Toàn Cầu (Macroeconomics & Global Liquidity)
 - **Chính sách Tiền tệ & Quyết định của Fed:** Kỳ vọng lãi suất, biên bản FOMC, phát biểu của các quan chức Fed và tác động đến chi phí vốn.

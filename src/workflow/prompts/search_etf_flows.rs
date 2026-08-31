@@ -6,14 +6,13 @@ pub const SEARCH_ETF_FLOWS_PROMPT: &str = r#"# 🔍 Nhiệm Vụ Tìm Kiếm: D�
 **Ngày hiện tại:** Hôm nay ngày <<@day>> tháng <<@month>> năm <<@year>>
 
 ## 🎯 Mục tiêu tìm kiếm (Google Search):
-Sử dụng công cụ Google Search để tìm kiếm và trích xuất dữ liệu dòng tiền ròng (Net Inflows / Outflows) mới nhất của các quỹ Bitcoin Spot ETF lớn tại Mỹ (Farside Investors, Coinglass, The Block).
+Sử dụng công cụ Google Search để tìm kiếm và trích xuất dữ liệu dòng tiền ròng (Net Inflows / Outflows) mới nhất của các quỹ Bitcoin Spot ETF trong ngày giao dịch gần nhất từ các nguồn theo dõi dòng tiền uy tín.
 
-## 🔎 Từ khóa tìm kiếm gợi ý:
-- "Bitcoin ETF net inflows outflows today Farside"
-- "US Spot Bitcoin ETF daily flow data Coinglass"
-- "BlackRock IBIT net inflows latest"
-- "Fidelity FBTC Grayscale GBTC net flow today"
-- "Total Bitcoin ETF holdings and net asset value"
+## 🔎 Định hướng từ khóa tìm kiếm (Search Queries):
+- "Spot Bitcoin ETF net inflows outflows today"
+- "US Bitcoin ETF daily net flow data latest"
+- "Bitcoin ETF inflows outflows by fund today"
+- "Total Bitcoin ETF cumulative net flow asset value"
 
 ## 📊 Dữ liệu Real-time tham khảo:
 ```json
@@ -23,8 +22,8 @@ Sử dụng công cụ Google Search để tìm kiếm và trích xuất dữ li
 ## ⚠️ NGUYÊN TẮC BẮT BUỘC:
 1. **CHỈ TRÍCH XUẤT SỐ LIỆU VÀ SỰ THẬT:** Tuyệt đối KHÔNG phân tích chủ quan.
 2. Trích xuất rõ ràng:
-   - Tổng dòng tiền ròng (Total Net Inflow/Outflow tính bằng triệu USD hoặc BTC) của toàn bộ các quỹ Spot ETF trong ngày giao dịch gần nhất.
-   - Số liệu chi tiết từng quỹ chủ chốt: BlackRock (IBIT), Fidelity (FBTC), Grayscale (GBTC), ARK Invest (ARKB), Bitwise (BITB).
-   - Tổng giá trị tài sản ròng tích lũy (Cumulative Net Inflow / Total AUM).
+   - Tổng dòng tiền ròng (Total Net Inflows/Outflows tính bằng USD hoặc BTC) của toàn bộ các quỹ Spot Bitcoin ETF trong ngày giao dịch gần nhất.
+   - Chi tiết các quỹ có dòng tiền vào (inflow) hoặc dòng tiền rút ra (outflow) đáng kể nhất.
+   - Tổng lượng nắm giữ hoặc tổng tài sản ròng tích lũy (Total AUM / Cumulative Inflows).
 3. Trả về kết quả dưới dạng Bảng Markdown và danh sách gạch đầu dòng ngắn gọn, không chào hỏi, không kết luận.
 "#;

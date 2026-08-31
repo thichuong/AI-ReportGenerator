@@ -6,14 +6,14 @@ pub const SEARCH_EVENTS_CALENDAR_PROMPT: &str = r#"# 🔍 Nhiệm Vụ Tìm Ki�
 **Ngày hiện tại:** Hôm nay ngày <<@day>> tháng <<@month>> năm <<@year>>
 
 ## 🎯 Mục tiêu tìm kiếm (Google Search):
-Sử dụng công cụ Google Search để tìm kiếm và trích xuất lịch sự kiện kinh tế vĩ mô và sự kiện tiền mã hóa sắp diễn ra trong vòng 7 ngày tới (ForexFactory, DailyFX, CoinMarketCal, TokenUnlocks, CryptoRank).
+Sử dụng công cụ Google Search để tìm kiếm và trích xuất lịch sự kiện kinh tế vĩ mô và sự kiện tiền mã hóa sắp diễn ra trong vòng 7 ngày tới từ các nguồn lịch kinh tế và theo dõi sự kiện crypto uy tín.
 
-## 🔎 Từ khóa tìm kiếm gợi ý:
-- "US economic calendar this week ForexFactory"
-- "Crypto events calendar next 7 days CoinMarketCal"
-- "Major token unlocks schedule this week TokenUnlocks"
-- "Upcoming FOMC meeting Fed speakers calendar this week"
-- "Crypto network upgrades hardforks scheduled this week"
+## 🔎 Định hướng từ khóa tìm kiếm (Search Queries):
+- "Economic calendar this week crypto market impact"
+- "Crypto events calendar roadmap upcoming 7 days"
+- "Major crypto token unlocks schedule this week"
+- "Central bank meetings interest rate decisions this week"
+- "Upcoming cryptocurrency network upgrades catalysts this week"
 
 ## 📊 Dữ liệu Real-time tham khảo:
 ```json
@@ -23,7 +23,7 @@ Sử dụng công cụ Google Search để tìm kiếm và trích xuất lịch 
 ## ⚠️ NGUYÊN TẮC BẮT BUỘC:
 1. **CHỈ TRÍCH XUẤT THỜI GIAN VÀ SỰ KIỆN CỤ THỂ:** Tuyệt đối KHÔNG phân tích chủ quan.
 2. Trích xuất rõ ràng:
-   - Các sự kiện kinh tế Mỹ (Lịch công bố CPI, PPI, PCE, Bảng lương phi nông nghiệp NFP, cuộc họp Fed, bài phát biểu của quan chức Fed) có kèm ngày giờ.
-   - Các sự kiện Crypto quan trọng: Nâng cấp hard fork mạng lưới, hạn chót phê duyệt hồ sơ ETF, các đợt mở khóa Token Unlocks quy mô lớn (giá trị > $10M).
+   - Các sự kiện kinh tế then chốt (Lịch công bố chỉ số lạm phát, việc làm, cuộc họp ngân hàng trung ương, bài phát biểu của các nhà hoạch định chính sách) có kèm ngày giờ.
+   - Các sự kiện Crypto quan trọng: Nâng cấp mạng lưới, hạn chót phê duyệt hồ sơ pháp lý, các đợt mở khóa token quy mô lớn.
 3. Trả về kết quả dưới dạng Bảng Markdown có các cột: Thời Gian | Sự Kiện | Phân Loại (Kinh tế / Crypto) | Mức Độ Tác Động Dự Kiến (Cao/TB/Thấp), không chào hỏi, không kết luận.
 "#;

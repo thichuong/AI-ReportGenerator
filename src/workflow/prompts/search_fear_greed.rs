@@ -6,13 +6,13 @@ pub const SEARCH_FEAR_GREED_PROMPT: &str = r#"# 🔍 Nhiệm Vụ Tìm Kiếm: C
 **Ngày hiện tại:** Hôm nay ngày <<@day>> tháng <<@month>> năm <<@year>>
 
 ## 🎯 Mục tiêu tìm kiếm (Google Search):
-Sử dụng công cụ Google Search để tìm kiếm và trích xuất chỉ số Sợ hãi & Tham lam (Crypto Fear & Greed Index từ Alternative.me / CoinMarketCap) và tổng hợp xu hướng thảo luận tâm lý trên các kênh mạng xã hội (Twitter/X crypto, Reddit r/CryptoCurrency, Telegram).
+Sử dụng công cụ Google Search để tìm kiếm và trích xuất chỉ số Sợ hãi & Tham lam (Crypto Fear & Greed Index) và tổng hợp xu hướng thảo luận tâm lý, phản ứng của đám đông trên các kênh mạng xã hội/cộng đồng crypto.
 
-## 🔎 Từ khóa tìm kiếm gợi ý:
-- "Crypto Fear and Greed Index today Alternative.me"
-- "Bitcoin sentiment index score today"
-- "Crypto Twitter discussion sentiment trending topics"
-- "Reddit cryptocurrency top discussions sentiment 24h"
+## 🔎 Định hướng từ khóa tìm kiếm (Search Queries):
+- "Crypto Fear and Greed Index score today latest"
+- "Cryptocurrency market sentiment index today"
+- "Crypto social media sentiment trending topics 24h"
+- "Bitcoin community sentiment discussions today"
 
 ## 📊 Dữ liệu Real-time tham khảo:
 ```json
