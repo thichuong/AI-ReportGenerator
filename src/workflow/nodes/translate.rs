@@ -119,15 +119,8 @@ async fn translate_with_prompt(
 
     let node_name = format!("translate_{suffix}");
 
-    match call_gemini_flash_lite_api(
-        api_key,
-        prompt,
-        session_id,
-        &node_name,
-        false,
-        Some(config),
-    )
-    .await
+    match call_gemini_flash_lite_api(api_key, prompt, session_id, &node_name, false, Some(config))
+        .await
     {
         Ok(response) => {
             let mut cleaned = response.trim().to_string();

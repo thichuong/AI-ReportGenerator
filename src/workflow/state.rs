@@ -18,9 +18,19 @@ pub struct ReportState {
     /// Current attempt number
     pub current_attempt: u32,
 
+    // Search data contents
+    pub search_price_technicals: Option<String>,
+    pub search_btcd_altcoins: Option<String>,
+    pub search_etf_flows: Option<String>,
+    pub search_whale_onchain: Option<String>,
+    pub search_corporate_treasury: Option<String>,
+    pub search_fear_greed: Option<String>,
+    pub search_macro_economy: Option<String>,
+    pub search_regulatory_legal: Option<String>,
+    pub search_breaking_news: Option<String>,
+    pub search_events_calendar: Option<String>,
+
     // Generated contents
-    pub tech_analysis_content: Option<String>,
-    pub macro_analysis_content: Option<String>,
     pub research_content: Option<String>,
     pub report_content: Option<String>,
     pub interface_content: Option<String>,
@@ -64,8 +74,16 @@ impl ReportState {
             max_attempts,
             current_attempt: 0,
 
-            tech_analysis_content: None,
-            macro_analysis_content: None,
+            search_price_technicals: None,
+            search_btcd_altcoins: None,
+            search_etf_flows: None,
+            search_whale_onchain: None,
+            search_corporate_treasury: None,
+            search_fear_greed: None,
+            search_macro_economy: None,
+            search_regulatory_legal: None,
+            search_breaking_news: None,
+            search_events_calendar: None,
             research_content: None,
             report_content: None,
             interface_content: None,

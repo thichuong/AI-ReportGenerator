@@ -16,19 +16,59 @@ pub async fn report_writer(mut state: ReportState) -> Result<ReportState, anyhow
         return Ok(state);
     }
 
-    let tech_content = state
-        .tech_analysis_content
+    let price_technicals = state
+        .search_price_technicals
         .as_deref()
-        .unwrap_or("No Technical Data");
-    let macro_content = state
-        .macro_analysis_content
+        .unwrap_or("No Technical Price Data");
+    let btcd_altcoins = state
+        .search_btcd_altcoins
         .as_deref()
-        .unwrap_or("No Macro Data");
+        .unwrap_or("No BTC Dominance Data");
+    let etf_flows = state
+        .search_etf_flows
+        .as_deref()
+        .unwrap_or("No ETF Flow Data");
+    let whale_onchain = state
+        .search_whale_onchain
+        .as_deref()
+        .unwrap_or("No Whale On-Chain Data");
+    let corporate_treasury = state
+        .search_corporate_treasury
+        .as_deref()
+        .unwrap_or("No Corporate Treasury Data");
+    let fear_greed = state
+        .search_fear_greed
+        .as_deref()
+        .unwrap_or("No Fear & Greed Data");
+    let macro_economy = state
+        .search_macro_economy
+        .as_deref()
+        .unwrap_or("No Macro Economy Data");
+    let regulatory_legal = state
+        .search_regulatory_legal
+        .as_deref()
+        .unwrap_or("No Regulatory/Legal Data");
+    let breaking_news = state
+        .search_breaking_news
+        .as_deref()
+        .unwrap_or("No Breaking News Data");
+    let events_calendar = state
+        .search_events_calendar
+        .as_deref()
+        .unwrap_or("No Events Calendar Data");
 
     let prompt = prompts::process_placeholders(prompts::report_writer::WRITER_PROMPT);
     let mut full_prompt = prompt
-        .replace("{{TECH_CONTENT}}", tech_content)
-        .replace("{{MACRO_CONTENT}}", macro_content);
+        .replace("{{SEARCH_PRICE_TECHNICALS}}", price_technicals)
+        .replace("{{SEARCH_BTCD_ALTCOINS}}", btcd_altcoins)
+        .replace("{{SEARCH_ETF_FLOWS}}", etf_flows)
+        .replace("{{SEARCH_WHALE_ONCHAIN}}", whale_onchain)
+        .replace("{{SEARCH_CORPORATE_TREASURY}}", corporate_treasury)
+        .replace("{{SEARCH_FEAR_GREED}}", fear_greed)
+        .replace("{{SEARCH_MACRO_ECONOMY}}", macro_economy)
+        .replace("{{SEARCH_REGULATORY_LEGAL}}", regulatory_legal)
+        .replace("{{SEARCH_BREAKING_NEWS}}", breaking_news)
+        .replace("{{SEARCH_EVENTS_CALENDAR}}", events_calendar);
 
     full_prompt = if let Some(ref data) = state.realtime_data {
         full_prompt.replace("{{REAL_TIME_DATA}}", data)

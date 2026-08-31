@@ -41,19 +41,13 @@ pub async fn run_workflow(
 
     // Research and validation loop
     loop {
-        // Step 2: Research Pipeline
-        state = nodes::research_tech(state).await?;
+        // Step 2: Search Pipeline (10 Micro Search Nodes - Pure Factual Search)
+        state = run_search_pipeline(state, &session_id).await?;
         if !state.success {
-            error!("[{}] Tech research failed", session_id);
             return Ok(state);
         }
 
-        state = nodes::research_macro(state).await?;
-        if !state.success {
-            error!("[{}] Macro research failed", session_id);
-            return Ok(state);
-        }
-
+        // Step 3: Synthesis & Report Writing
         state = nodes::report_writer(state).await?;
         if !state.success {
             error!("[{}] Report synthesis failed", session_id);
@@ -122,6 +116,74 @@ pub async fn run_workflow(
         "[{}] Workflow completed. Report ID: {:?}",
         session_id, state.report_id
     );
+    Ok(state)
+}
+
+/// Runs all 10 micro search nodes sequentially to retrieve market data facts.
+async fn run_search_pipeline(
+    mut state: ReportState,
+    session_id: &str,
+) -> Result<ReportState, anyhow::Error> {
+    state = nodes::search_price_technicals(state).await?;
+    if !state.success {
+        error!("[{}] Price technicals search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_btcd_altcoins(state).await?;
+    if !state.success {
+        error!("[{}] BTC dominance search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_etf_flows(state).await?;
+    if !state.success {
+        error!("[{}] ETF flows search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_whale_onchain(state).await?;
+    if !state.success {
+        error!("[{}] Whale on-chain search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_corporate_treasury(state).await?;
+    if !state.success {
+        error!("[{}] Corporate treasury search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_fear_greed(state).await?;
+    if !state.success {
+        error!("[{}] Fear & Greed search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_macro_economy(state).await?;
+    if !state.success {
+        error!("[{}] Macro economy search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_regulatory_legal(state).await?;
+    if !state.success {
+        error!("[{}] Regulatory & legal search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_breaking_news(state).await?;
+    if !state.success {
+        error!("[{}] Breaking news search failed", session_id);
+        return Ok(state);
+    }
+
+    state = nodes::search_events_calendar(state).await?;
+    if !state.success {
+        error!("[{}] Events calendar search failed", session_id);
+        return Ok(state);
+    }
+
     Ok(state)
 }
 

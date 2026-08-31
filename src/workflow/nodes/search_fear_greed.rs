@@ -1,22 +1,23 @@
-//! Tech deep node
+//! Fear & Greed index and sentiment search node
 use crate::workflow::nodes::utils::{call_gemma_api, is_rate_limit_error};
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{error, info};
 
-/// Researches technical data using Gemma API.
+/// Searches Fear & Greed index and social sentiment using Google Search via Gemma API.
 ///
 /// # Errors
 ///
 /// Returns an error if the API call fails or state transition errors occur.
-pub async fn research_tech(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
+pub async fn search_fear_greed(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
-    info!("[{}] Step 2a: Research Tech & On-chain", session_id);
+    info!("[{}] Step 2.6: Search Fear & Greed & Sentiment", session_id);
 
     if state.rate_limit_stop {
         return Ok(state);
     }
 
-    let prompt = prompts::process_placeholders(prompts::research_tech::TECH_PROMPT);
+    let prompt =
+        prompts::process_placeholders(prompts::search_fear_greed::SEARCH_FEAR_GREED_PROMPT);
     let full_prompt = if let Some(ref data) = state.realtime_data {
         prompt.replace("{{REAL_TIME_DATA}}", data)
     } else {
@@ -27,7 +28,7 @@ pub async fn research_tech(mut state: ReportState) -> Result<ReportState, anyhow
         &state.api_key,
         &full_prompt,
         session_id,
-        "tech",
+        "search_fear_greed",
         true,
         false,
         None,
@@ -35,12 +36,12 @@ pub async fn research_tech(mut state: ReportState) -> Result<ReportState, anyhow
     .await
     {
         Ok(response) => {
-            info!("[{}] Tech research completed", session_id);
-            state.tech_analysis_content = Some(response);
+            info!("[{}] Fear & Greed search completed", session_id);
+            state.search_fear_greed = Some(response);
             state.success = true;
         }
         Err(e) => {
-            let error_msg = format!("Tech API call failed: {e}");
+            let error_msg = format!("Search Fear & Greed API call failed: {e}");
             error!("[{}] {}", session_id, error_msg);
             if is_rate_limit_error(&e.to_string()) {
                 state.rate_limit_stop = true;

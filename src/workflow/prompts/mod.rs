@@ -6,8 +6,16 @@
 pub mod interface;
 pub mod report_validator;
 pub mod report_writer;
-pub mod research_macro;
-pub mod research_tech;
+pub mod search_breaking_news;
+pub mod search_btcd_altcoins;
+pub mod search_corporate_treasury;
+pub mod search_etf_flows;
+pub mod search_events_calendar;
+pub mod search_fear_greed;
+pub mod search_macro_economy;
+pub mod search_price_technicals;
+pub mod search_regulatory_legal;
+pub mod search_whale_onchain;
 pub mod translation;
 
 use chrono::Utc;
