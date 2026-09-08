@@ -207,7 +207,7 @@ pub async fn call_model_api(
 
             return extract_text_from_response(&json)
                 .ok_or_else(|| anyhow::anyhow!("Failed to extract text from AI response"));
-        } else if status.as_u16() == 500 && retries < MAX_RETRIES {
+        } else if matches!(status.as_u16(), 500 | 503) && retries < MAX_RETRIES {
             retries += 1;
             let delay = match retries {
                 2 => 15,
@@ -217,8 +217,8 @@ pub async fn call_model_api(
                 _ => 5,
             };
             error!(
-                "[{}] {} API 500 Internal Server Error for node {} (Attempt {}/{}). Retrying in {}s...",
-                session_id, model, node_name, retries, MAX_RETRIES, delay
+                "[{}] {} API {} for node {} (Attempt {}/{}). Retrying in {}s...",
+                session_id, model, status, node_name, retries, MAX_RETRIES, delay
             );
             tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
             continue;
