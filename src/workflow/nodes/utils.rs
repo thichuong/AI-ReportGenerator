@@ -1,20 +1,83 @@
 //! Utility functions for workflow nodes
 use regex::Regex;
 use std::sync::OnceLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[allow(clippy::expect_used)]
 fn get_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
+        let timeout_secs = std::env::var("HTTP_REQUEST_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(300); // 5 minutes default
+
         reqwest::Client::builder()
-            .timeout(std::time::Duration::from_mins(2))
+            .timeout(std::time::Duration::from_secs(timeout_secs))
+            .connect_timeout(std::time::Duration::from_secs(10))
             .build()
             .expect("Failed to create reqwest client")
     })
 }
 
+static SENSITIVE_REGEXES: OnceLock<(Regex, Regex, Regex)> = OnceLock::new();
+
+/// Masks sensitive query params (e.g. `key=***`), headers, and URL credentials.
+///
+/// # Panics
+///
+/// Panics if the internal regex patterns fail to compile (only possible if hardcoded pattern is invalid).
+#[allow(clippy::expect_used)]
+#[must_use]
+pub fn mask_sensitive_data(input: &str) -> String {
+    let (key_re, header_re, url_auth_re) = SENSITIVE_REGEXES.get_or_init(|| {
+        (
+            Regex::new(r#"(?i)(key=)[^&\s"'`\)]+"#).expect("Valid regex for key param"),
+            Regex::new(r#"(?i)(x-goog-api-key:\s*)[^\s"'`]+"#).expect("Valid regex for api key header"),
+            Regex::new(r"(?i)(://[^:\s/]+:)[^@\s/]+(@)").expect("Valid regex for url auth"),
+        )
+    });
+
+    let s1 = key_re.replace_all(input, "${1}***");
+    let s2 = header_re.replace_all(&s1, "${1}***");
+    url_auth_re.replace_all(&s2, "${1}***${2}").to_string()
+}
+
+/// Calculates exponential backoff delay with jitter.
+///
+/// Delay sequence:
+/// - Attempt 1: ~2s
+/// - Attempt 2: ~5s
+/// - Attempt 3: ~10s
+/// - Attempt 4: ~15s
+/// - Attempt 5: ~30s
+/// - Attempt 6: ~45s
+/// - Attempt 7..10: ~60s (capped at 60s base)
+///
+/// Adds +0% to +25% jitter to prevent thundering herd.
+#[must_use]
+pub fn calculate_backoff_delay(attempt: u32) -> std::time::Duration {
+    let base_secs: u64 = match attempt {
+        1 => 2,
+        2 => 5,
+        3 => 10,
+        4 => 15,
+        5 => 30,
+        6 => 45,
+        _ => 60,
+    };
+
+    let base_ms = base_secs * 1000;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_nanos());
+    let jitter_pct = u64::from(nanos % 26); // 0..25%
+    let total_ms = base_ms + (base_ms * jitter_pct) / 100;
+    std::time::Duration::from_millis(total_ms)
+}
+
 /// Optional API configuration overrides
+#[derive(Debug, Clone)]
 pub struct ApiConfig {
     pub temperature: f64,
     pub thinking_level: String,
@@ -102,6 +165,9 @@ fn extract_text_from_response(json: &serde_json::Value) -> Option<String> {
 /// Model identifier for Gemma 4 (used for research nodes with search tool enabled).
 pub const MODEL_GEMMA_4: &str = "gemma-4-31b-it";
 
+/// Fallback model identifier for search nodes if Gemma 4 fails after 10 retries.
+pub const MODEL_FALLBACK_FLASH: &str = "gemini-2.5-flash";
+
 /// Model identifier for Gemini 3.5 Flash Lite (used for synthesis, validation, interface, translation).
 pub const MODEL_GEMINI_3_5_FLASH_LITE: &str = "gemini-3.5-flash-lite";
 
@@ -123,11 +189,12 @@ pub async fn call_model_api(
     enable_search: bool,
     json_mode: bool,
     config_override: Option<ApiConfig>,
+    max_retries: u32,
 ) -> Result<String, anyhow::Error> {
-    const MAX_RETRIES: u32 = 5;
     let client = get_client();
+    // Do not pass API key in query parameters to prevent leaking in reqwest error messages.
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     );
 
     let body = build_gemini_request_body(prompt, enable_search, json_mode, config_override);
@@ -150,35 +217,32 @@ pub async fn call_model_api(
         let response_result = client
             .post(&url)
             .header("Content-Type", "application/json")
+            .header("x-goog-api-key", api_key)
             .json(&body)
             .send()
             .await;
 
         let response = match response_result {
             Ok(resp) => resp,
-            Err(e) if retries < MAX_RETRIES => {
+            Err(e) if retries < max_retries => {
                 retries += 1;
-                let delay = match retries {
-                    2 => 15,
-                    3 => 300,
-                    4 => 900,
-                    5 => 3600,
-                    _ => 5,
-                };
+                let delay = calculate_backoff_delay(retries);
+                let masked_err = mask_sensitive_data(&e.to_string());
                 error!(
                     "[{}] Request failed for node {} with model {} (Attempt {}/{}): {}. Retrying in {}s...",
-                    session_id, node_name, model, retries, MAX_RETRIES, e, delay
+                    session_id, node_name, model, retries, max_retries, masked_err, delay.as_secs()
                 );
-                tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+                tokio::time::sleep(delay).await;
                 continue;
             }
             Err(e) => {
+                let masked_err = mask_sensitive_data(&e.to_string());
                 error!(
-                    "[{}] Request failed for node {} with model {}: {}. URL: https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key=***",
-                    session_id, node_name, model, e, model
+                    "[{}] Request failed for node {} with model {}: {}. URL: {}",
+                    session_id, node_name, model, masked_err, url
                 );
                 return Err(anyhow::anyhow!(
-                    "Request failed after {retries} retries: {e}"
+                    "Request failed after {retries} retries: {masked_err}"
                 ));
             }
         };
@@ -207,35 +271,31 @@ pub async fn call_model_api(
 
             return extract_text_from_response(&json)
                 .ok_or_else(|| anyhow::anyhow!("Failed to extract text from AI response"));
-        } else if matches!(status.as_u16(), 500 | 503) && retries < MAX_RETRIES {
+        } else if (status.is_server_error() || status.as_u16() == 429) && retries < max_retries {
             retries += 1;
-            let delay = match retries {
-                2 => 15,
-                3 => 300,
-                4 => 900,
-                5 => 3600,
-                _ => 5,
-            };
+            let delay = calculate_backoff_delay(retries);
             error!(
-                "[{}] {} API {} for node {} (Attempt {}/{}). Retrying in {}s...",
-                session_id, model, status, node_name, retries, MAX_RETRIES, delay
+                "[{}] {} API status {} for node {} (Attempt {}/{}). Retrying in {}s...",
+                session_id, model, status, node_name, retries, max_retries, delay.as_secs()
             );
-            tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+            tokio::time::sleep(delay).await;
             continue;
         }
 
-        let error_text = response.text().await.unwrap_or_default();
+        let raw_error_text = response.text().await.unwrap_or_default();
+        let masked_error_text = mask_sensitive_data(&raw_error_text);
         return Err(anyhow::anyhow!(
-            "API request to {model} failed with status {status}: {error_text}"
+            "API request to {model} failed with status {status}: {masked_error_text}"
         ));
     }
 }
 
-/// Calls Gemma 4 API (`gemma-4-31b-it`), used for search-enabled research nodes.
+/// Calls Gemma 4 API (`gemma-4-31b-it`) with up to 10 retries.
+/// If all 10 retries are exhausted, falls back to Gemini 2.5 Flash (or model in `GEMINI_FALLBACK_MODEL`) for 1 attempt.
 ///
 /// # Errors
 ///
-/// Returns an error if the API request fails or response cannot be parsed.
+/// Returns an error if both primary and fallback API requests fail or responses cannot be parsed.
 #[allow(clippy::too_many_arguments)]
 pub async fn call_gemma_api(
     api_key: &str,
@@ -246,7 +306,7 @@ pub async fn call_gemma_api(
     json_mode: bool,
     config_override: Option<ApiConfig>,
 ) -> Result<String, anyhow::Error> {
-    call_model_api(
+    let primary_result = call_model_api(
         MODEL_GEMMA_4,
         api_key,
         prompt,
@@ -254,9 +314,54 @@ pub async fn call_gemma_api(
         node_name,
         enable_search,
         json_mode,
-        config_override,
+        config_override.clone(),
+        10,
     )
-    .await
+    .await;
+
+    match primary_result {
+        Ok(response) => Ok(response),
+        Err(primary_err) => {
+            let fallback_model = std::env::var("GEMINI_FALLBACK_MODEL")
+                .unwrap_or_else(|_| MODEL_FALLBACK_FLASH.to_string());
+
+            warn!(
+                "[{}] Node {} primary model {} failed after 10 retries: {}. Switching to fallback model {} (1 attempt)...",
+                session_id, node_name, MODEL_GEMMA_4, primary_err, fallback_model
+            );
+
+            match call_model_api(
+                &fallback_model,
+                api_key,
+                prompt,
+                session_id,
+                node_name,
+                enable_search,
+                json_mode,
+                config_override,
+                1,
+            )
+            .await
+            {
+                Ok(fallback_response) => {
+                    info!(
+                        "[{}] Node {} fallback to {} SUCCEEDED!",
+                        session_id, node_name, fallback_model
+                    );
+                    Ok(fallback_response)
+                }
+                Err(fallback_err) => {
+                    error!(
+                        "[{}] Node {} fallback to {} also failed: {}",
+                        session_id, node_name, fallback_model, fallback_err
+                    );
+                    Err(anyhow::anyhow!(
+                        "Primary model ({MODEL_GEMMA_4}) failed after 10 retries: {primary_err}. Fallback ({fallback_model}) also failed: {fallback_err}"
+                    ))
+                }
+            }
+        }
+    }
 }
 
 /// Calls Gemini 3.5 Flash Lite API (`gemini-3.5-flash-lite`), used for synthesis, validation, interface creation, and translation.
@@ -281,6 +386,7 @@ pub async fn call_gemini_flash_lite_api(
         false,
         json_mode,
         config_override,
+        10,
     )
     .await
 }
@@ -406,4 +512,70 @@ pub fn process_mathjax(content: &str) -> String {
     }
 
     result.into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mask_sensitive_data_key_param() {
+        let input = "error sending request for url (https://generativelanguage.googleapis.com/v1beta/models/gemini:generateContent?key=AIzaSyABC123xyz): connection reset";
+        let masked = mask_sensitive_data(input);
+        assert!(!masked.contains("AIzaSyABC123xyz"));
+        assert!(masked.contains("key=***"));
+    }
+
+    #[test]
+    fn test_mask_sensitive_data_multiple_params() {
+        let input = "https://example.com/api?foo=bar&key=SECRET_KEY_123&test=1";
+        let masked = mask_sensitive_data(input);
+        assert!(!masked.contains("SECRET_KEY_123"));
+        assert!(masked.contains("key=***"));
+        assert!(masked.contains("foo=bar"));
+        assert!(masked.contains("&test=1"));
+    }
+
+    #[test]
+    fn test_mask_sensitive_data_header() {
+        let input = "Request headers: x-goog-api-key: AIzaSyTopSecretKey\nContent-Type: application/json";
+        let masked = mask_sensitive_data(input);
+        assert!(!masked.contains("AIzaSyTopSecretKey"));
+        assert!(masked.contains("x-goog-api-key: ***"));
+    }
+
+    #[test]
+    fn test_mask_sensitive_data_url_auth() {
+        let input = "Connecting to redis://default:superpassword123@redis-node:6379/0";
+        let masked = mask_sensitive_data(input);
+        assert!(!masked.contains("superpassword123"));
+        assert!(masked.contains("redis://default:***@redis-node:6379/0"));
+    }
+
+    #[test]
+    #[allow(clippy::duration_suboptimal_units)]
+    fn test_calculate_backoff_delay_ranges() {
+        let d1 = calculate_backoff_delay(1);
+        assert!(d1 >= std::time::Duration::from_secs(2));
+        assert!(d1 <= std::time::Duration::from_millis(2600));
+
+        let d2 = calculate_backoff_delay(2);
+        assert!(d2 >= std::time::Duration::from_secs(5));
+        assert!(d2 <= std::time::Duration::from_millis(6500));
+
+        let d5 = calculate_backoff_delay(5);
+        assert!(d5 >= std::time::Duration::from_secs(30));
+        assert!(d5 <= std::time::Duration::from_secs(38));
+
+        let d10 = calculate_backoff_delay(10);
+        assert!(d10 >= std::time::Duration::from_secs(60));
+        assert!(d10 <= std::time::Duration::from_secs(76));
+    }
+
+    #[test]
+    fn test_model_constants() {
+        assert_eq!(MODEL_GEMMA_4, "gemma-4-31b-it");
+        assert_eq!(MODEL_FALLBACK_FLASH, "gemini-2.5-flash");
+        assert_eq!(MODEL_GEMINI_3_5_FLASH_LITE, "gemini-3.5-flash-lite");
+    }
 }

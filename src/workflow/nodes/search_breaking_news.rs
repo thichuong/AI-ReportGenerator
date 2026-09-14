@@ -1,13 +1,13 @@
 //! Breaking news & institutional views search node
-use crate::workflow::nodes::utils::{call_gemma_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::call_gemma_api;
 use crate::workflow::{prompts, state::ReportState};
-use tracing::{error, info};
+use tracing::{info, warn};
 
 /// Searches 24h breaking news and institutional views using Google Search via Gemma API.
 ///
 /// # Errors
 ///
-/// Returns an error if the API call fails or state transition errors occur.
+/// Returns an error if state transition errors occur.
 pub async fn search_breaking_news(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!(
@@ -45,12 +45,14 @@ pub async fn search_breaking_news(mut state: ReportState) -> Result<ReportState,
         }
         Err(e) => {
             let error_msg = format!("Search breaking news API call failed: {e}");
-            error!("[{}] {}", session_id, error_msg);
-            if is_rate_limit_error(&e.to_string()) {
-                state.rate_limit_stop = true;
-            }
-            state.add_error(&error_msg);
-            state.success = false;
+            warn!(
+                "[{}] {} - applying partial degradation (fallback to N/A)",
+                session_id, error_msg
+            );
+            state.search_breaking_news =
+                Some("N/A - Breaking news & institutional views temporarily unavailable".to_string());
+            state.add_error(&format!("[DEGRADED] {error_msg}"));
+            state.success = true;
         }
     }
     Ok(state)

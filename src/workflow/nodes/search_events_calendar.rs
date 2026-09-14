@@ -1,13 +1,13 @@
 //! Upcoming events calendar search node
-use crate::workflow::nodes::utils::{call_gemma_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::call_gemma_api;
 use crate::workflow::{prompts, state::ReportState};
-use tracing::{error, info};
+use tracing::{info, warn};
 
 /// Searches upcoming 7-day economic and crypto calendar using Google Search via Gemma API.
 ///
 /// # Errors
 ///
-/// Returns an error if the API call fails or state transition errors occur.
+/// Returns an error if state transition errors occur.
 pub async fn search_events_calendar(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 2.10: Search 7-Day Events Calendar", session_id);
@@ -43,12 +43,14 @@ pub async fn search_events_calendar(mut state: ReportState) -> Result<ReportStat
         }
         Err(e) => {
             let error_msg = format!("Search events calendar API call failed: {e}");
-            error!("[{}] {}", session_id, error_msg);
-            if is_rate_limit_error(&e.to_string()) {
-                state.rate_limit_stop = true;
-            }
-            state.add_error(&error_msg);
-            state.success = false;
+            warn!(
+                "[{}] {} - applying partial degradation (fallback to N/A)",
+                session_id, error_msg
+            );
+            state.search_events_calendar =
+                Some("N/A - 7-day events calendar temporarily unavailable".to_string());
+            state.add_error(&format!("[DEGRADED] {error_msg}"));
+            state.success = true;
         }
     }
     Ok(state)

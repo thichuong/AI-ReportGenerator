@@ -83,6 +83,9 @@ pub const WRITER_PROMPT: &str = r#"# 📝 Trình Tổng Hợp Báo Cáo Research
    - In đậm (`**...**`) các chỉ số, mức giá và tỷ lệ phần trăm quan trọng để tối ưu khả năng đọc quét.
    - Không kèm theo lời chào, lời dẫn nhập hay kết luận giải thích của AI (ví dụ: "Dưới đây là báo cáo...").
 
+4. **XỬ LÝ DỮ LIỆU N/A HOẶC TẠM THỜI GIÁN ĐOẠN (PARTIAL DEGRADATION):**
+   - Nếu bất kỳ trường dữ liệu tìm kiếm phụ nào (như Dữ liệu Cá voi On-chain, Kho bạc Doanh nghiệp & Quỹ VC, Chỉ số Fear & Greed) hiển thị 'N/A' hoặc thông báo không có sẵn do nguồn ngoài gián đoạn, hãy ghi chú khách quan là số liệu tạm thời không khả dụng. Tuyệt đối KHÔNG tự ý suy diễn hoặc bịa đặt các con số thống kê giả mạo.
+
 ---
 
 ## 📋 CẤU TRÚC BÁO CÁO BẮT BUỘC (OUTPUT TEMPLATE):

@@ -61,7 +61,7 @@ async fn get_realtime_data() -> Result<Option<String>, anyhow::Error> {
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
     info!(
         "📡 Connecting to Redis: {}",
-        &redis_url[..redis_url.len().min(30)]
+        crate::workflow::nodes::utils::mask_sensitive_data(&redis_url)
     );
 
     // Use multi-tier-cache RedisStreams

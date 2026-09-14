@@ -1,13 +1,13 @@
 //! Price & technical indicators search node
-use crate::workflow::nodes::utils::{call_gemma_api, is_rate_limit_error};
+use crate::workflow::nodes::utils::call_gemma_api;
 use crate::workflow::{prompts, state::ReportState};
-use tracing::{error, info};
+use tracing::{info, warn};
 
 /// Searches price and technical indicators using Google Search via Gemma API.
 ///
 /// # Errors
 ///
-/// Returns an error if the API call fails or state transition errors occur.
+/// Returns an error if state transition errors occur.
 pub async fn search_price_technicals(mut state: ReportState) -> Result<ReportState, anyhow::Error> {
     let session_id = &state.session_id.clone();
     info!("[{}] Step 2.1: Search Price & Technicals", session_id);
@@ -43,12 +43,15 @@ pub async fn search_price_technicals(mut state: ReportState) -> Result<ReportSta
         }
         Err(e) => {
             let error_msg = format!("Search price technicals API call failed: {e}");
-            error!("[{}] {}", session_id, error_msg);
-            if is_rate_limit_error(&e.to_string()) {
-                state.rate_limit_stop = true;
-            }
-            state.add_error(&error_msg);
-            state.success = false;
+            warn!(
+                "[{}] {} - applying partial degradation (fallback to N/A & realtime data)",
+                session_id, error_msg
+            );
+            state.search_price_technicals = Some(
+                "N/A - Technical price search unavailable. System will use realtime data.".to_string(),
+            );
+            state.add_error(&format!("[DEGRADED] {error_msg}"));
+            state.success = true;
         }
     }
     Ok(state)

@@ -12,7 +12,7 @@ use crate::db::models::{CryptoReport, NewCryptoReport};
 use routing::{RoutingDecision, should_retry_interface_or_continue, should_retry_or_continue};
 use sqlx::PgPool;
 use state::ReportState;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 /// Runs the complete report generation workflow.
@@ -126,62 +126,92 @@ async fn run_search_pipeline(
 ) -> Result<ReportState, anyhow::Error> {
     state = nodes::search_price_technicals(state).await?;
     if !state.success {
-        error!("[{}] Price technicals search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Price technicals search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_btcd_altcoins(state).await?;
     if !state.success {
-        error!("[{}] BTC dominance search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] BTC dominance search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_etf_flows(state).await?;
     if !state.success {
-        error!("[{}] ETF flows search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] ETF flows search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_whale_onchain(state).await?;
     if !state.success {
-        error!("[{}] Whale on-chain search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Whale on-chain search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_corporate_treasury(state).await?;
     if !state.success {
-        error!("[{}] Corporate treasury search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Corporate treasury search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_fear_greed(state).await?;
     if !state.success {
-        error!("[{}] Fear & Greed search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Fear & Greed search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_macro_economy(state).await?;
     if !state.success {
-        error!("[{}] Macro economy search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Macro economy search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_regulatory_legal(state).await?;
     if !state.success {
-        error!("[{}] Regulatory & legal search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Regulatory & legal search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_breaking_news(state).await?;
     if !state.success {
-        error!("[{}] Breaking news search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Breaking news search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     state = nodes::search_events_calendar(state).await?;
     if !state.success {
-        error!("[{}] Events calendar search failed", session_id);
-        return Ok(state);
+        warn!(
+            "[{}] Events calendar search failed, continuing with partial degradation",
+            session_id
+        );
+        state.success = true;
     }
 
     Ok(state)
