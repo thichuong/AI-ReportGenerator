@@ -1,9 +1,9 @@
 //! Upcoming events calendar search node
-use crate::workflow::nodes::utils::call_gemma_api;
+use crate::workflow::nodes::utils::call_search_api;
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{info, warn};
 
-/// Searches upcoming 7-day economic and crypto calendar using Google Search via Gemma API.
+/// Searches upcoming 7-day economic and crypto calendar using Google Search via Search API.
 ///
 /// # Errors
 ///
@@ -25,7 +25,7 @@ pub async fn search_events_calendar(mut state: ReportState) -> Result<ReportStat
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemma_api(
+    match call_search_api(
         &state.api_key,
         &full_prompt,
         session_id,

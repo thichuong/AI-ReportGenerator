@@ -1,9 +1,9 @@
 //! Whale & On-chain metrics search node
-use crate::workflow::nodes::utils::call_gemma_api;
+use crate::workflow::nodes::utils::call_search_api;
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{info, warn};
 
-/// Searches whale activities and on-chain metrics using Google Search via Gemma API.
+/// Searches whale activities and on-chain metrics using Google Search via Search API.
 ///
 /// # Errors
 ///
@@ -24,7 +24,7 @@ pub async fn search_whale_onchain(mut state: ReportState) -> Result<ReportState,
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemma_api(
+    match call_search_api(
         &state.api_key,
         &full_prompt,
         session_id,

@@ -1,9 +1,9 @@
 //! Price & technical indicators search node
-use crate::workflow::nodes::utils::call_gemma_api;
+use crate::workflow::nodes::utils::call_search_api;
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{info, warn};
 
-/// Searches price and technical indicators using Google Search via Gemma API.
+/// Searches price and technical indicators using Google Search via Search API.
 ///
 /// # Errors
 ///
@@ -25,7 +25,7 @@ pub async fn search_price_technicals(mut state: ReportState) -> Result<ReportSta
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemma_api(
+    match call_search_api(
         &state.api_key,
         &full_prompt,
         session_id,

@@ -162,5 +162,8 @@ cython_debug/
 # Prompt environment files (local prompt configs/outputs)
 prompt_envs/
 
+# Runtime debug logs
+debug_*.json
+
 github_deploy_key.pub
 github_deploy_key

@@ -1,9 +1,9 @@
 //! Macroeconomic & Central Bank search node
-use crate::workflow::nodes::utils::call_gemma_api;
+use crate::workflow::nodes::utils::call_search_api;
 use crate::workflow::{prompts, state::ReportState};
 use tracing::{info, warn};
 
-/// Searches macroeconomic indicators and central bank policies using Google Search via Gemma API.
+/// Searches macroeconomic indicators and central bank policies using Google Search via Search API.
 ///
 /// # Errors
 ///
@@ -27,7 +27,7 @@ pub async fn search_macro_economy(mut state: ReportState) -> Result<ReportState,
         prompt.replace("{{REAL_TIME_DATA}}", r#"{"notice": "No data"}"#)
     };
 
-    match call_gemma_api(
+    match call_search_api(
         &state.api_key,
         &full_prompt,
         session_id,
